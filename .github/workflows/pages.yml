@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Node
         uses: actions/setup-node@v4
@@ -34,7 +36,23 @@ jobs:
       - name: Build React/Vite
         run: npm run build
 
+      - name: Skip stale build
+        id: freshness
+        shell: bash
+        run: |
+          git fetch origin main
+          REMOTE_SHA="$(git rev-parse origin/main)"
+          echo "Workflow SHA: $GITHUB_SHA"
+          echo "Current main: $REMOTE_SHA"
+          if [ "$REMOTE_SHA" != "$GITHUB_SHA" ]; then
+            echo "A newer commit already exists on main. This old build will not publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Prepare branch-root site
+        if: steps.freshness.outputs.publish == 'true'
         run: |
           test -f dist/app.html
           rm -rf assets
@@ -44,13 +62,29 @@ jobs:
           touch .nojekyll
 
       - name: Commit compiled site
+        if: steps.freshness.outputs.publish == 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html 404.html assets .nojekyll
+
           if git diff --cached --quiet; then
             echo "Static site already up to date."
-          else
-            git commit -m "Build static SIGFROTA [skip ci]"
-            git push
+            exit 0
           fi
+
+          git commit -m "Build static SIGFROTA [skip ci]"
+
+          # A second freshness check closes the small race window between build and push.
+          git fetch origin main
+          REMOTE_SHA="$(git rev-parse origin/main)"
+          PARENT_SHA="$(git rev-parse HEAD^)"
+
+          if [ "$REMOTE_SHA" != "$PARENT_SHA" ]; then
+            echo "A newer commit arrived while this build was finishing."
+            echo "Skipping this obsolete publish; the newer workflow will publish it."
+            exit 0
+          fi
+
+          git push origin HEAD:main
