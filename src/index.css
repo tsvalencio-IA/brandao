@@ -10,3 +10,8 @@
 .uid-box>span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#7a8594;font-weight:800}
 .uid-box code{display:block;width:100%;overflow-wrap:anywhere;background:#f4f6f9;border-radius:8px;padding:9px;font-size:11px;color:#21314a}
 .uid-box small{font-size:9px;line-height:1.45;color:#7d8795;max-width:390px}
+
+.presence{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;white-space:nowrap}
+.presence i{display:block;width:8px;height:8px;border-radius:999px;background:#9ba5b2}
+.presence.online{color:#237447}.presence.online i{background:#2da766;box-shadow:0 0 0 3px rgba(45,167,102,.12)}
+.presence.offline{color:#7d8794}
