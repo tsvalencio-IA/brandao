@@ -74,6 +74,7 @@ const pendingProfile = (fbUser) => ({
   active: false,
   status_usuario: 'PENDENTE',
   approval_status: 'PENDENTE',
+  deleted: false,
   permissoes_especiais: [],
   requested_at: serverTimestamp(),
   auth_provider: fbUser.providerData?.[0]?.providerId || 'password',
