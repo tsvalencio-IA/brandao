@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Users as UsersIcon, Plus, Pencil, UserPlus, Trash2, UserCheck, RotateCcw } from 'lucide-react';
 import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
@@ -24,7 +24,6 @@ const isOnline = (presence) => {
 export default function Users(){
   const { user: currentUser, userRole } = useAuth();
   const users = useCollection('users',{orderBy:'created_at',direction:'desc'});
-  const presence = useCollection('userPresence',{});
   const [open,setOpen] = useState(false);
   const [editing,setEditing] = useState(null);
   const [mode,setMode] = useState('create');
@@ -35,7 +34,6 @@ export default function Users(){
 
   const allowed = can.manageUsers(userRole, currentUser);
   const permissions = useMemo(() => Object.entries(SPECIAL_PERMISSION_LABELS), []);
-  const presenceByUid = useMemo(() => Object.fromEntries(presence.data.map(p=>[p.id,p])), [presence.data]);
 
   const normalUsers = useMemo(() => users.data.filter(u=>u.deleted!==true && u.status_usuario!=='EXCLUIDO'), [users.data]);
   const deletedUsers = useMemo(() => users.data.filter(u=>u.deleted===true || u.status_usuario==='EXCLUIDO'), [users.data]);
@@ -129,7 +127,6 @@ export default function Users(){
       deleted_by_uid:currentUser?.uid||null,deleted_by_email:currentUser?.email||null,
     };
     await entities.users.update(u.id,patch);
-    try{await entities.userPresence.update(u.id,{online:false,last_seen:new Date().toISOString()})}catch{}
     await logAudit({
       user:currentUser,role:userRole,action:'USUARIO_EXCLUIDO',
       entity:'User',recordId:u.id,before,after:patch,
@@ -169,13 +166,13 @@ export default function Users(){
       <div className="table-wrap"><table className="data-table"><thead><tr>
         <th>Usuário</th><th>Perfil</th><th>OPM / Oficina</th><th>Poderes</th><th>Conexão</th><th>Status</th><th></th>
       </tr></thead><tbody>{normalUsers.map(u=>{
-        const p=presenceByUid[u.id]; const online=isOnline(p); const pending=u.status_usuario==='PENDENTE'||!u.role;
+        const online=u.id===currentUser?.uid ? true : isOnline(u); const pending=u.status_usuario==='PENDENTE'||!u.role;
         return <tr key={u.id}>
           <td><strong>{u.nome_guerra||u.name||u.email||'—'}</strong><br/><span className="muted">{u.email||'—'}</span></td>
           <td>{pending?<span className="badge warning">AGUARDANDO PERFIL</span>:(ROLE_LABELS[u.role]||u.role)}</td>
           <td>{u.unit||u.workshop_name||'—'}</td>
           <td>{u.permissoes_especiais?.length?u.permissoes_especiais.length+' liberado(s)':'Nenhum extra'}</td>
-          <td><span className={'presence '+(online?'online':'offline')}><i/>{online?'Online':'Offline'}</span>{p?.last_seen&&<div className="muted small">{dateTimeBR(p.last_seen)}</div>}</td>
+          <td><span className={'presence '+(online?'online':'offline')}><i/>{online?'Online':'Offline'}</span>{u.last_seen&&<div className="muted small">{dateTimeBR(u.last_seen)}</div>}</td>
           <td>{pending?<span className="badge warning">PENDENTE</span>:u.active===false?<span className="badge danger">INATIVO</span>:<span className="badge success">ATIVO</span>}</td>
           <td><div className="record-actions">
             {pending?<Button variant="success" onClick={()=>startEdit(u,'approve')}><UserCheck size={13}/>Liberar</Button>:<Button variant="outline" onClick={()=>startEdit(u)}><Pencil size={13}/>Editar</Button>}
