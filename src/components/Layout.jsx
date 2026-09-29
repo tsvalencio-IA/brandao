@@ -1,59 +1,113 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import {
-  LayoutDashboard, Car, AlertTriangle, ClipboardList, CheckCircle2,
-  Building2, Activity, Wrench, Package, FileBarChart, DollarSign,
-  Users, Shield, Briefcase, Menu, X,
-} from 'lucide-react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import {
+  LayoutDashboard, Car, AlertTriangle, Stethoscope, ListChecks, ClipboardList,
+  CheckCircle2, Wrench, Package, Building2, Activity, DollarSign, FileBarChart,
+  Users, Shield, Menu, X, LogOut, Settings2, Briefcase
+} from 'lucide-react';
 import { APP } from '../config/app';
+import { useAuth } from '../auth/AuthContext';
+import { canAccessRoute, ROLE_LABELS } from '../lib/permissions';
 import Footer from './Footer';
 
-const nav = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/viaturas', label: 'Viaturas', icon: Car },
-  { to: '/registrar-baixa', label: 'Registrar Baixa', icon: AlertTriangle },
-  { to: '/ordens', label: 'Ordens de Manutenção', icon: ClipboardList },
-  { to: '/manutencao-rapida', label: 'Manutenção Rápida', icon: Wrench },
-  { to: '/estoque', label: 'Estoque de Peças', icon: Package },
-  { to: '/aprovacoes', label: 'Aprovações', icon: CheckCircle2 },
-  { to: '/oficinas', label: 'Oficinas', icon: Building2 },
-  { to: '/controle-operacional', label: 'Controle Operacional', icon: Activity },
-  { to: '/portal-oficina', label: 'Portal da Oficina', icon: Briefcase },
-  { to: '/uge', label: 'Financeiro UGE', icon: DollarSign },
-  { to: '/relatorios-uge', label: 'Relatórios UGE', icon: FileBarChart },
-  { to: '/usuarios', label: 'Usuários', icon: Users },
-  { to: '/auditoria', label: 'Auditoria', icon: Shield },
+const groups = [
+  { label: null, items: [{ path: '/', label: 'Dashboard', icon: LayoutDashboard }] },
+  { label: 'FROTA', items: [
+    { path: '/viaturas', label: 'Viaturas', icon: Car },
+    { path: '/registrar-baixa', label: 'Registrar Baixa', icon: AlertTriangle },
+    { path: '/controle-operacional', label: 'Controle Operacional', icon: Activity },
+  ]},
+  { label: 'MANUTENÇÃO', items: [
+    { path: '/diagnostico', label: 'Diagnóstico', icon: Stethoscope },
+    { path: '/checklist', label: 'Checklist', icon: ListChecks },
+    { path: '/ordens', label: 'Ordens de Manutenção', icon: ClipboardList },
+    { path: '/aprovacoes', label: 'Aprovações', icon: CheckCircle2 },
+    { path: '/manutencao-rapida', label: 'Manutenção Rápida', icon: Wrench },
+    { path: '/portal-oficina', label: 'Portal da Oficina', icon: Briefcase },
+  ]},
+  { label: 'LOGÍSTICA', items: [
+    { path: '/estoque', label: 'Estoque', icon: Package },
+    { path: '/oficinas', label: 'Oficinas Credenciadas', icon: Building2 },
+  ]},
+  { label: 'FINANCEIRO', items: [
+    { path: '/uge', label: 'Fluxo UGE', icon: DollarSign },
+    { path: '/relatorios-uge', label: 'Relatórios UGE', icon: FileBarChart },
+  ]},
+  { label: 'ADMINISTRAÇÃO', items: [
+    { path: '/usuarios', label: 'Usuários', icon: Users },
+    { path: '/auditoria', label: 'Auditoria', icon: Shield },
+  ]},
 ];
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const { user, userRole, logout, setupMode, switchSetupRole } = useAuth();
+  const location = useLocation();
 
   return (
     <div className="shell">
       {open && <button className="overlay" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
-      <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
+      <aside className={'sidebar ' + (open ? 'sidebar-open' : '')}>
         <div className="brand">
-          <div className="brand-mark"><Shield size={20} /></div>
+          <div className="brand-mark"><Shield size={20}/></div>
           <div><strong>{APP.name}</strong><span>{APP.subtitle}</span></div>
-          <button className="mobile-close" onClick={() => setOpen(false)} aria-label="Fechar menu"><X size={18} /></button>
+          <button className="mobile-close" onClick={() => setOpen(false)}><X size={18}/></button>
         </div>
+
         <nav className="nav-list">
-          {nav.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setOpen(false)}>
-              <Icon size={17} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+          {groups.map((group, gi) => {
+            const available = group.items.filter((item) => canAccessRoute(userRole, item.path));
+            if (!available.length) return null;
+            return <div className="nav-group" key={gi}>
+              {group.label && <div className="nav-group-label">{group.label}</div>}
+              {available.map(({ path, label, icon: Icon }) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  end={path === '/'}
+                  className={({ isActive }) => 'nav-item ' + (isActive ? 'active' : '')}
+                  onClick={() => setOpen(false)}
+                >
+                  <Icon size={17}/><span>{label}</span>
+                </NavLink>
+              ))}
+            </div>;
+          })}
         </nav>
+
+        <div className="sidebar-user">
+          <div className="user-avatar">{(user?.displayName || user?.name || user?.email || 'U').slice(0,1).toUpperCase()}</div>
+          <div className="user-meta">
+            <strong>{user?.displayName || user?.name || user?.email}</strong>
+            <span>{ROLE_LABELS[userRole] || userRole}</span>
+          </div>
+          {!setupMode && <button className="icon-btn sidebar-logout" onClick={logout} title="Sair"><LogOut size={16}/></button>}
+        </div>
       </aside>
 
       <div className="content-column">
         <header className="topbar">
-          <button className="menu-button" onClick={() => setOpen(true)} aria-label="Abrir menu"><Menu size={20} /></button>
-          <div className="topbar-title">{APP.name}</div>
-          <div className="status-pill"><span />Estrutura inicial</div>
+          <button className="menu-button" onClick={() => setOpen(true)}><Menu size={20}/></button>
+          <div className="topbar-context">
+            <strong>{APP.name}</strong>
+            <span>{location.pathname === '/' ? 'Visão geral' : 'Gestão operacional'}</span>
+          </div>
+          {setupMode && (
+            <div className="setup-role">
+              <Settings2 size={14}/>
+              <select value={userRole || 'gestor'} onChange={(e) => switchSetupRole(e.target.value)}>
+                <option value="gestor">Gestor</option>
+                <option value="adm">ADM</option>
+                <option value="adm_opm">ADM OPM</option>
+                <option value="mecanico">Mecânico</option>
+                <option value="oficina">Oficina</option>
+                <option value="uge">UGE</option>
+              </select>
+            </div>
+          )}
         </header>
-        <main className="page-content"><Outlet /></main>
+        {setupMode && <div className="setup-banner">Modo de configuração ativo — dados locais vazios. Firebase Auth/Firestore e Cloudinary serão conectados pelas variáveis de ambiente.</div>}
+        <main className="page-content"><Outlet context={{ user, userRole }} /></main>
         <Footer />
       </div>
     </div>
