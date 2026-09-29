@@ -9,11 +9,15 @@ export default function ProtectedRoute() {
   if (loading) return <div className="full-loader"><span className="spinner" /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
 
+  if (user?.deleted === true || user?.status_usuario === 'EXCLUIDO') {
+    return <Navigate to="/acesso-negado" replace />;
+  }
+
   if (user?.status_usuario === 'PENDENTE' || user?.approval_status === 'PENDENTE' || !userRole) {
     return <Navigate to="/sem-perfil" replace />;
   }
 
-  if (user?.deleted === true || user?.status_usuario === 'EXCLUIDO' || user?.active === false || user?.status_usuario === 'INATIVO') {
+  if (user?.active === false || user?.status_usuario === 'INATIVO') {
     return <Navigate to="/acesso-negado" replace />;
   }
 
