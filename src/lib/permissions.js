@@ -17,6 +17,7 @@ export const ROLE_LABELS = {
 };
 
 export const SPECIAL_PERMISSIONS = {
+  ACESSO_TOTAL: 'acesso_total',
   GERENCIAR_USUARIOS: 'gerenciar_usuarios',
   REGISTRAR_BAIXA: 'registrar_baixa',
   DIAGNOSTICO: 'diagnostico',
@@ -33,7 +34,25 @@ export const SPECIAL_PERMISSIONS = {
   APROVAR_PAGAMENTO: 'aprovar_pagamento',
 };
 
+export const LEGACY_FULL_ACCESS_PERMISSIONS = [
+  'gerenciar_usuarios',
+  'registrar_baixa',
+  'diagnostico',
+  'checklist',
+  'gerar_oes',
+  'aprovar_orcamento',
+  'gerenciar_oficinas',
+  'gerenciar_estoque',
+  'manutencao_rapida',
+  'acessar_uge',
+  'corrigir_operacional',
+  'acessar_auditoria',
+  'inativar_viatura',
+  'aprovar_pagamento',
+];
+
 export const SPECIAL_PERMISSION_LABELS = {
+  acesso_total: 'ACESSO TOTAL — todos os módulos e ações',
   gerenciar_usuarios: 'Cadastrar usuários e definir permissões',
   registrar_baixa: 'Registrar baixa de viatura',
   diagnostico: 'Realizar diagnóstico técnico',
@@ -93,15 +112,27 @@ const ROUTES = {
   uge: ['/', '/uge', '/relatorios-uge'],
 };
 
-export function hasSpecialPermission(user, permission) {
+export function hasLegacyFullAccess(user) {
+  const list = Array.isArray(user?.permissoes_especiais) ? user.permissoes_especiais : [];
+  return LEGACY_FULL_ACCESS_PERMISSIONS.every((permission) => list.includes(permission));
+}
+
+export function hasFullAccess(user) {
   if (!user) return false;
   if (user.role === 'gestor') return true;
+  const list = Array.isArray(user.permissoes_especiais) ? user.permissoes_especiais : [];
+  return list.includes(SPECIAL_PERMISSIONS.ACESSO_TOTAL) || hasLegacyFullAccess(user);
+}
+
+export function hasSpecialPermission(user, permission) {
+  if (!user) return false;
+  if (hasFullAccess(user)) return true;
   return Array.isArray(user.permissoes_especiais) && user.permissoes_especiais.includes(permission);
 }
 
 export function canAccessRoute(role, pathname, user = null) {
   if (!role) return false;
-  if (role === 'gestor') return true;
+  if (hasFullAccess(user)) return true;
 
   if (pathname === '/usuarios' || pathname.startsWith('/usuarios/')) {
     return hasSpecialPermission(user, SPECIAL_PERMISSIONS.GERENCIAR_USUARIOS);
@@ -118,12 +149,16 @@ export function canAccessRoute(role, pathname, user = null) {
     ['/registrar-baixa', SPECIAL_PERMISSIONS.REGISTRAR_BAIXA],
     ['/diagnostico', SPECIAL_PERMISSIONS.DIAGNOSTICO],
     ['/checklist', SPECIAL_PERMISSIONS.CHECKLIST],
+    ['/ordens', SPECIAL_PERMISSIONS.GERAR_OES],
     ['/aprovacoes', SPECIAL_PERMISSIONS.APROVAR_ORCAMENTO],
     ['/oficinas', SPECIAL_PERMISSIONS.GERENCIAR_OFICINAS],
     ['/estoque', SPECIAL_PERMISSIONS.GERENCIAR_ESTOQUE],
     ['/manutencao-rapida', SPECIAL_PERMISSIONS.MANUTENCAO_RAPIDA],
+    ['/controle-operacional', SPECIAL_PERMISSIONS.CORRIGIR_OPERACIONAL],
     ['/uge', SPECIAL_PERMISSIONS.ACESSAR_UGE],
     ['/relatorios-uge', SPECIAL_PERMISSIONS.ACESSAR_UGE],
+    ['/usuarios', SPECIAL_PERMISSIONS.GERENCIAR_USUARIOS],
+    ['/auditoria', SPECIAL_PERMISSIONS.ACESSAR_AUDITORIA],
   ];
 
   return permissionByRoute.some(([base, permission]) =>
@@ -132,17 +167,17 @@ export function canAccessRoute(role, pathname, user = null) {
 }
 
 export const can = {
-  manageUsers: (r, u) => r === 'gestor' || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERENCIAR_USUARIOS),
-  viewAudit: (r, u) => r === 'gestor' || hasSpecialPermission(u, SPECIAL_PERMISSIONS.ACESSAR_AUDITORIA),
-  manageVehicles: (r) => ['gestor', 'adm', 'mecanico'].includes(r),
-  registerDown: (r, u) => ['gestor', 'adm', 'adm_opm', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.REGISTRAR_BAIXA),
-  diagnosis: (r, u) => ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.DIAGNOSTICO),
-  checklist: (r, u) => ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.CHECKLIST),
-  createOES: (r, u) => ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERAR_OES),
-  manageWorkshops: (r, u) => ['gestor', 'adm'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERENCIAR_OFICINAS),
-  approveBudget: (r, u) => ['gestor', 'adm'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.APROVAR_ORCAMENTO),
-  uge: (r, u) => ['gestor', 'adm', 'uge'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.ACESSAR_UGE),
-  stock: (r, u) => ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERENCIAR_ESTOQUE),
-  quickMaintenance: (r, u) => ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.MANUTENCAO_RAPIDA),
-  discharge: (r) => ['gestor', 'adm', 'mecanico'].includes(r),
+  manageUsers: (r, u) => hasFullAccess(u) || r === 'gestor' || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERENCIAR_USUARIOS),
+  viewAudit: (r, u) => hasFullAccess(u) || r === 'gestor' || hasSpecialPermission(u, SPECIAL_PERMISSIONS.ACESSAR_AUDITORIA),
+  manageVehicles: (r, u) => hasFullAccess(u) || ['gestor', 'adm', 'mecanico'].includes(r),
+  registerDown: (r, u) => hasFullAccess(u) || ['gestor', 'adm', 'adm_opm', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.REGISTRAR_BAIXA),
+  diagnosis: (r, u) => hasFullAccess(u) || ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.DIAGNOSTICO),
+  checklist: (r, u) => hasFullAccess(u) || ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.CHECKLIST),
+  createOES: (r, u) => hasFullAccess(u) || ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERAR_OES),
+  manageWorkshops: (r, u) => hasFullAccess(u) || ['gestor', 'adm'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERENCIAR_OFICINAS),
+  approveBudget: (r, u) => hasFullAccess(u) || ['gestor', 'adm'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.APROVAR_ORCAMENTO),
+  uge: (r, u) => hasFullAccess(u) || ['gestor', 'adm', 'uge'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.ACESSAR_UGE),
+  stock: (r, u) => hasFullAccess(u) || ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERENCIAR_ESTOQUE),
+  quickMaintenance: (r, u) => hasFullAccess(u) || ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.MANUTENCAO_RAPIDA),
+  discharge: (r, u) => hasFullAccess(u) || ['gestor', 'adm', 'mecanico'].includes(r),
 };
