@@ -4,7 +4,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { APP } from '../config/app';
-import { auth, db, firebaseConfigured } from '../config/firebase';
+import { auth, db, firebaseConfigured, BOOTSTRAP_ADMIN_UID } from '../config/firebase';
 
 const AuthContext = createContext(null);
 const SETUP_ROLE_KEY = 'sigfrota:setup-role';
@@ -20,6 +20,17 @@ const setupUser = (role) => ({
   workshop_id: '',
 });
 
+const bootstrapAdmin = (fbUser) => ({
+  uid: fbUser.uid,
+  email: fbUser.email,
+  displayName: fbUser.displayName || fbUser.email,
+  name: fbUser.displayName || fbUser.email,
+  role: 'gestor',
+  active: true,
+  status_usuario: 'ATIVO',
+  bootstrap: true,
+});
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,22 +43,42 @@ export function AuthProvider({ children }) {
       setLoading(false);
       return undefined;
     }
+
     return onAuthStateChanged(auth, async (fbUser) => {
+      setAuthError(null);
       if (!fbUser) {
         setUser(null);
         setLoading(false);
         return;
       }
+
       try {
+        if (fbUser.uid === BOOTSTRAP_ADMIN_UID) {
+          setUser(bootstrapAdmin(fbUser));
+          setLoading(false);
+          return;
+        }
+
         const profile = await getDoc(doc(db, 'users', fbUser.uid));
-        setUser({
-          uid: fbUser.uid,
-          email: fbUser.email,
-          displayName: fbUser.displayName,
-          ...(profile.exists() ? profile.data() : {}),
-        });
+        if (!profile.exists()) {
+          setUser({
+            uid: fbUser.uid,
+            email: fbUser.email,
+            displayName: fbUser.displayName || fbUser.email,
+            role: null,
+            active: true,
+          });
+        } else {
+          setUser({
+            uid: fbUser.uid,
+            email: fbUser.email,
+            displayName: fbUser.displayName,
+            ...profile.data(),
+          });
+        }
       } catch (e) {
         setAuthError(e);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -56,8 +87,8 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     setAuthError(null);
-    if (APP.setupMode || !firebaseConfigured) return;
-    await signInWithEmailAndPassword(auth, email, password);
+    if (!firebaseConfigured) throw new Error('Firebase Auth ainda não configurado.');
+    return signInWithEmailAndPassword(auth, email, password);
   };
 
   const logout = async () => {
