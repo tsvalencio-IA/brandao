@@ -56,7 +56,7 @@ export default function Layout() {
 
         <nav className="nav-list">
           {groups.map((group, gi) => {
-            const available = group.items.filter((item) => canAccessRoute(userRole, item.path));
+            const available = group.items.filter((item) => canAccessRoute(userRole, item.path, user));
             if (!available.length) return null;
             return <div className="nav-group" key={gi}>
               {group.label && <div className="nav-group-label">{group.label}</div>}

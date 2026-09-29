@@ -10,7 +10,7 @@ export default function ProtectedRoute() {
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
   if (user?.active === false || user?.status_usuario === 'INATIVO') return <Navigate to="/acesso-negado" replace />;
   if (!userRole) return <Navigate to="/sem-perfil" replace />;
-  if (!canAccessRoute(userRole, location.pathname)) return <Navigate to="/acesso-negado" replace />;
+  if (!canAccessRoute(userRole, location.pathname, user)) return <Navigate to="/acesso-negado" replace />;
 
   return <Outlet />;
 }

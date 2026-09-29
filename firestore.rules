@@ -10,6 +10,10 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == 'e2hp11Q3wqSiVD1I1YiUGpYgGsi2';
     }
 
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function profile() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
@@ -17,14 +21,30 @@ service cloud.firestore {
     function activeUser() {
       return signedIn() && (
         bootstrapAdmin() ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-          && profile().active != false
-          && profile().status_usuario != 'INATIVO')
+        (hasProfile() &&
+          profile().active != false &&
+          profile().status_usuario != 'INATIVO')
       );
     }
 
-    function roleIs(roles) {
+    function isRole(role) {
+      return bootstrapAdmin() || (activeUser() && profile().role == role);
+    }
+
+    function roleIn(roles) {
       return bootstrapAdmin() || (activeUser() && profile().role in roles);
+    }
+
+    function hasPermission(permission) {
+      return bootstrapAdmin() || (
+        activeUser() &&
+        profile().permissoes_especiais is list &&
+        permission in profile().permissoes_especiais
+      );
+    }
+
+    function canManageUsers() {
+      return isRole('gestor') || hasPermission('gerenciar_usuarios');
     }
 
     function sameUnit() {
@@ -45,71 +65,72 @@ service cloud.firestore {
 
     match /public_vehicle_tokens/{token} {
       allow read: if true;
-      allow write: if roleIs(['gestor','adm','mecanico']);
+      allow write: if roleIn(['gestor','adm','mecanico']);
     }
 
     match /operational_logs/{id} {
       allow create: if
-        (signedIn() && activeUser()) ||
+        activeUser() ||
         (request.resource.data.public_token is string &&
          exists(/databases/$(database)/documents/public_vehicle_tokens/$(request.resource.data.public_token)));
-      allow read: if roleIs(['gestor','adm','adm_opm','mecanico']) || sameUnit();
-      allow update: if roleIs(['gestor','adm','mecanico']);
-      allow delete: if roleIs(['gestor']);
+      allow read: if roleIn(['gestor','adm','adm_opm','mecanico']) || sameUnit();
+      allow update: if roleIn(['gestor','adm','mecanico']) || hasPermission('corrigir_operacional');
+      allow delete: if isRole('gestor');
     }
 
     match /users/{uid} {
-      allow read: if bootstrapAdmin() || (signedIn() && request.auth.uid == uid) || roleIs(['gestor']);
-      allow write: if bootstrapAdmin() || roleIs(['gestor']);
+      allow read: if canManageUsers() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if canManageUsers();
+      allow delete: if isRole('gestor');
     }
 
     match /vehicles/{id} {
       allow read: if activeUser() && (
-        roleIs(['gestor','adm','mecanico']) ||
+        roleIn(['gestor','adm','mecanico']) ||
         sameUnit()
       );
-      allow create, update: if roleIs(['gestor','adm','mecanico']);
-      allow delete: if roleIs(['gestor']);
+      allow create, update: if roleIn(['gestor','adm','mecanico']);
+      allow delete: if isRole('gestor');
     }
 
     match /workshops/{id} {
       allow read: if activeUser();
-      allow write: if roleIs(['gestor','adm']);
+      allow write: if roleIn(['gestor','adm']) || hasPermission('gerenciar_oficinas');
     }
 
     match /parts/{id} {
-      allow read, write: if roleIs(['gestor','mecanico']);
+      allow read, write: if roleIn(['gestor','mecanico']) || hasPermission('gerenciar_estoque');
     }
 
     match /stock_movements/{id} {
-      allow read, write: if roleIs(['gestor','mecanico']);
+      allow read, write: if roleIn(['gestor','mecanico']) || hasPermission('gerenciar_estoque');
     }
 
     match /quick_maintenances/{id} {
-      allow read, write: if roleIs(['gestor','mecanico']);
+      allow read, write: if roleIn(['gestor','mecanico']) || hasPermission('manutencao_rapida');
     }
 
     match /financial_flows/{id} {
-      allow read, write: if roleIs(['gestor','adm','uge']) || sameWorkshop();
+      allow read, write: if roleIn(['gestor','adm','uge']) || hasPermission('acessar_uge') || sameWorkshop();
     }
 
     match /commitments/{id} {
-      allow read, write: if roleIs(['gestor','adm','uge']);
+      allow read, write: if roleIn(['gestor','adm','uge']) || hasPermission('acessar_uge');
     }
 
     match /invoices/{id} {
-      allow read: if roleIs(['gestor','adm','uge']) || sameWorkshop();
-      allow create: if roleIs(['gestor','adm','uge','oficina']);
-      allow update: if roleIs(['gestor','adm','uge']);
+      allow read: if roleIn(['gestor','adm','uge']) || hasPermission('acessar_uge') || sameWorkshop();
+      allow create: if roleIn(['gestor','adm','uge','oficina']) || hasPermission('acessar_uge');
+      allow update: if roleIn(['gestor','adm','uge']) || hasPermission('acessar_uge');
     }
 
     match /payments/{id} {
-      allow read, write: if roleIs(['gestor','adm','uge']);
+      allow read, write: if roleIn(['gestor','adm','uge']) || hasPermission('aprovar_pagamento');
     }
 
     match /audit_logs/{id} {
       allow create: if activeUser();
-      allow read: if roleIs(['gestor']);
+      allow read: if isRole('gestor') || hasPermission('acessar_auditoria');
       allow update, delete: if false;
     }
 
