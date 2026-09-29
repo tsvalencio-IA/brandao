@@ -175,6 +175,17 @@ export function AuthProvider({ children }) {
           setLoading(false);
         });
 
+        try {
+          await setDoc(profileRef, {
+            online: true,
+            last_seen: serverTimestamp(),
+            last_login_at: serverTimestamp(),
+            presence_session_id: sessionId(),
+          }, { merge: true });
+        } catch (presenceError) {
+          console.warn('Falha ao marcar usuário online:', presenceError);
+        }
+
         const loginMarker = 'sigfrota:login-audit:' + fbUser.uid + ':' + sessionId();
         if (!sessionStorage.getItem(loginMarker)) {
           sessionStorage.setItem(loginMarker, '1');
@@ -205,19 +216,15 @@ export function AuthProvider({ children }) {
     if (APP.setupMode || !firebaseConfigured || !user?.uid || user.uid === 'setup-mode') return undefined;
     if (user.status_usuario === 'EXCLUIDO') return undefined;
 
-    const presenceRef = doc(db, 'user_presence', user.uid);
+    const presenceRef = doc(db, 'users', user.uid);
     let disposed = false;
 
     const mark = async (online) => {
       if (disposed && online) return;
       try {
         await setDoc(presenceRef, {
-          uid: user.uid,
-          email: user.email || '',
-          name: user.displayName || user.name || user.email || '',
-          role: user.role || null,
           online,
-          session_id: sessionId(),
+          presence_session_id: sessionId(),
           last_seen: serverTimestamp(),
         }, { merge: true });
       } catch (error) {
@@ -254,10 +261,11 @@ export function AuthProvider({ children }) {
 
     if (fbUser) {
       try {
-        await setDoc(doc(db, 'user_presence', fbUser.uid), {
+        await setDoc(doc(db, 'users', fbUser.uid), {
           online: false,
           last_seen: serverTimestamp(),
-          session_id: sessionId(),
+          last_logout_at: serverTimestamp(),
+          presence_session_id: sessionId(),
         }, { merge: true });
       } catch {}
       await writeAuditEvent(fbUser, 'LOGOUT', { entity: 'Auth', role: user?.role || null });
