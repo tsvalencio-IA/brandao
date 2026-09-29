@@ -1,41 +1,54 @@
-name: Deploy GitHub Pages
+name: Build static GitHub Pages
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'index.html'
+      - 'assets/**'
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: sigfrota-static-build
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
-      - run: npm run build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Install
+        run: npm install
+
+      - name: Build React/Vite
+        run: npm run build
+
+      - name: Prepare branch-root site
+        run: |
+          test -f dist/app.html
+          rm -rf assets
+          cp -R dist/assets ./assets
+          cp dist/app.html ./index.html
+          touch .nojekyll
+
+      - name: Commit compiled site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html assets .nojekyll
+          if git diff --cached --quiet; then
+            echo "Static site already up to date."
+          else
+            git commit -m "Build static SIGFROTA [skip ci]"
+            git push
+          fi
