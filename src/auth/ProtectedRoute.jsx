@@ -8,8 +8,15 @@ export default function ProtectedRoute() {
 
   if (loading) return <div className="full-loader"><span className="spinner" /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (user?.active === false || user?.status_usuario === 'INATIVO') return <Navigate to="/acesso-negado" replace />;
-  if (!userRole) return <Navigate to="/sem-perfil" replace />;
+
+  if (user?.status_usuario === 'PENDENTE' || user?.approval_status === 'PENDENTE' || !userRole) {
+    return <Navigate to="/sem-perfil" replace />;
+  }
+
+  if (user?.deleted === true || user?.status_usuario === 'EXCLUIDO' || user?.active === false || user?.status_usuario === 'INATIVO') {
+    return <Navigate to="/acesso-negado" replace />;
+  }
+
   if (!canAccessRoute(userRole, location.pathname, user)) return <Navigate to="/acesso-negado" replace />;
 
   return <Outlet />;
