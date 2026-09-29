@@ -1,0 +1,20 @@
+import { useState } from 'react';
+import { Users as UsersIcon, Plus } from 'lucide-react';
+import { useCollection } from '../hooks/useCollection';
+import { entities } from '../data/repository';
+import { ROLE_LABELS } from '../lib/permissions';
+import { Button, EmptyState, Field, Input, Modal, PageHeader, Select } from '../components/ui';
+
+const blank={uid:'',email:'',name:'',role:'adm_opm',unit:'',workshop_id:'',workshop_name:'',job_function:'',posto_graduacao:'',re:'',nome_guerra:''};
+
+export default function Users(){
+  const users=useCollection('users',{orderBy:'name',direction:'asc'});
+  const [open,setOpen]=useState(false);const [form,setForm]=useState(blank);
+  const save=async(e)=>{e.preventDefault();await entities.users.create({...form,active:true,status_usuario:'ATIVO',permissoes_especiais:[]},form.uid);setForm(blank);setOpen(false)};
+  const toggle=async(u)=>entities.users.update(u.id,{active:u.active===false,status_usuario:u.active===false?'ATIVO':'INATIVO'});
+  return <div><PageHeader title="Usuários" description="O Firebase Authentication cria a credencial; aqui o UID recebe o perfil e o escopo do SIGFROTA." actions={<Button onClick={()=>setOpen(true)}><Plus size={15}/>Vincular UID</Button>}/>
+    <div className="config-note" style={{marginBottom:14}}>Nesta versão sem backend administrativo, crie o usuário no Firebase Authentication e copie o UID para esta tela. Isso evita expor credenciais administrativas no navegador.</div>
+    {users.data.length===0?<EmptyState icon={UsersIcon} title="Nenhum perfil de usuário no Firestore"/>:<div className="table-wrap"><table className="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>OPM / Oficina</th><th>Status</th><th></th></tr></thead><tbody>{users.data.map(u=><tr key={u.id}><td><strong>{u.nome_guerra||u.name||'—'}</strong><br/><span className="muted">{u.posto_graduacao||''} {u.re?'RE '+u.re:''}</span></td><td>{u.email||'—'}</td><td>{ROLE_LABELS[u.role]||u.role}</td><td>{u.unit||u.workshop_name||'—'}</td><td>{u.active===false?'INATIVO':'ATIVO'}</td><td><Button variant={u.active===false?'success':'danger'} onClick={()=>toggle(u)}>{u.active===false?'Ativar':'Inativar'}</Button></td></tr>)}</tbody></table></div>}
+    <Modal open={open} onClose={()=>setOpen(false)} title="Vincular usuário do Firebase Auth" wide><form onSubmit={save} className="form-stack"><div className="form-grid"><Field label="UID do Firebase Auth" required><Input required value={form.uid} onChange={e=>setForm({...form,uid:e.target.value})}/></Field><Field label="E-mail"><Input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></Field><Field label="Nome"><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></Field><Field label="Perfil" required><Select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}>{Object.entries(ROLE_LABELS).map(([v,l])=><option key={v} value={v}>{l}</option>)}</Select></Field><Field label="Unidade (OPM)"><Input value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})}/></Field><Field label="ID da oficina"><Input value={form.workshop_id} onChange={e=>setForm({...form,workshop_id:e.target.value})}/></Field><Field label="Nome da oficina"><Input value={form.workshop_name} onChange={e=>setForm({...form,workshop_name:e.target.value})}/></Field><Field label="Função"><Input value={form.job_function} onChange={e=>setForm({...form,job_function:e.target.value})}/></Field><Field label="Posto/Graduação"><Input value={form.posto_graduacao} onChange={e=>setForm({...form,posto_graduacao:e.target.value})}/></Field><Field label="RE"><Input value={form.re} onChange={e=>setForm({...form,re:e.target.value})}/></Field><Field label="Nome de Guerra"><Input value={form.nome_guerra} onChange={e=>setForm({...form,nome_guerra:e.target.value})}/></Field></div><div className="form-actions"><Button variant="secondary" onClick={()=>setOpen(false)}>Cancelar</Button><Button type="submit">Salvar Perfil</Button></div></form></Modal>
+  </div>;
+}
