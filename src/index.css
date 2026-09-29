@@ -17,3 +17,6 @@
 .presence.offline{color:#7d8794}
 
 .audit-details{margin-top:7px;font-size:9px}.audit-details summary{cursor:pointer;font-weight:700;color:#536173}.audit-details>div{margin-top:7px}.audit-details span{font-weight:700;color:#687587}.audit-details pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;border:1px solid #e5e9ef;border-radius:8px;padding:8px;font-size:9px;line-height:1.4;margin:4px 0 0;color:#344255}
+
+.permission-total{grid-column:1/-1;border-color:#d4ad45;background:#fff9e8;font-weight:800}
+.permission-total span{color:#6f5618}
