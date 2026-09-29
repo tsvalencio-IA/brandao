@@ -5,7 +5,7 @@ import { entities } from '../data/repository';
 import { createFirebaseUser } from '../services/userAdmin';
 import { logAudit } from '../services/audit';
 import { useAuth } from '../auth/AuthContext';
-import { ROLE_LABELS, SPECIAL_PERMISSION_LABELS, can } from '../lib/permissions';
+import { ROLE_LABELS, SPECIAL_PERMISSION_LABELS, SPECIAL_PERMISSIONS, hasFullAccess, can } from '../lib/permissions';
 import { dateTimeBR } from '../lib/format';
 import { Button, EmptyState, Field, Input, Modal, PageHeader, Select } from '../components/ui';
 
@@ -50,14 +50,31 @@ export default function Users(){
       unit:u.unit||'', workshop_id:u.workshop_id||'', workshop_name:u.workshop_name||'',
       job_function:u.job_function||'', posto_graduacao:u.posto_graduacao||'', re:u.re||'',
       nome_guerra:u.nome_guerra||'', active:nextMode==='approve' ? true : u.active!==false,
-      permissoes_especiais:Array.isArray(u.permissoes_especiais)?u.permissoes_especiais:[],
+      permissoes_especiais:hasFullAccess(u) ? [SPECIAL_PERMISSIONS.ACESSO_TOTAL] : (Array.isArray(u.permissoes_especiais)?u.permissoes_especiais:[]),
     });
     setOpen(true);
   };
 
   const togglePermission = (permission) => {
     const list=form.permissoes_especiais||[];
-    setForm({...form,permissoes_especiais:list.includes(permission)?list.filter(p=>p!==permission):[...list,permission]});
+
+    if (permission === SPECIAL_PERMISSIONS.ACESSO_TOTAL) {
+      setForm({
+        ...form,
+        permissoes_especiais: list.includes(SPECIAL_PERMISSIONS.ACESSO_TOTAL)
+          ? []
+          : [SPECIAL_PERMISSIONS.ACESSO_TOTAL],
+      });
+      return;
+    }
+
+    const withoutTotal = list.filter(p=>p!==SPECIAL_PERMISSIONS.ACESSO_TOTAL);
+    setForm({
+      ...form,
+      permissoes_especiais: withoutTotal.includes(permission)
+        ? withoutTotal.filter(p=>p!==permission)
+        : [...withoutTotal,permission]
+    });
   };
 
   const payload = () => ({
@@ -171,7 +188,7 @@ export default function Users(){
           <td><strong>{u.nome_guerra||u.name||u.email||'—'}</strong><br/><span className="muted">{u.email||'—'}</span></td>
           <td>{pending?<span className="badge warning">AGUARDANDO PERFIL</span>:(ROLE_LABELS[u.role]||u.role)}</td>
           <td>{u.unit||u.workshop_name||'—'}</td>
-          <td>{u.permissoes_especiais?.length?u.permissoes_especiais.length+' liberado(s)':'Nenhum extra'}</td>
+          <td>{hasFullAccess(u)?<span className="badge success">ACESSO TOTAL</span>:(u.permissoes_especiais?.length?u.permissoes_especiais.length+' liberado(s)':'Nenhum extra')}</td>
           <td><span className={'presence '+(online?'online':'offline')}><i/>{online?'Online':'Offline'}</span>{u.last_seen&&<div className="muted small">{dateTimeBR(u.last_seen)}</div>}</td>
           <td>{pending?<span className="badge warning">PENDENTE</span>:u.active===false?<span className="badge danger">INATIVO</span>:<span className="badge success">ATIVO</span>}</td>
           <td><div className="record-actions">
@@ -207,10 +224,21 @@ export default function Users(){
           <Field label="RE"><Input value={form.re} onChange={e=>setForm({...form,re:e.target.value})}/></Field>
           <Field label="Nome de Guerra"><Input value={form.nome_guerra} onChange={e=>setForm({...form,nome_guerra:e.target.value})}/></Field>
         </div>
-        <div><div className="field-label">Permissões especiais</div><div className="permission-grid">
-          {permissions.map(([value,label])=><label className="permission-option" key={value}><input type="checkbox"
-            checked={form.permissoes_especiais.includes(value)} onChange={()=>togglePermission(value)}/><span>{label}</span></label>)}
-        </div></div>
+        <div>
+          <div className="field-label">Permissões especiais</div>
+          {form.permissoes_especiais.includes(SPECIAL_PERMISSIONS.ACESSO_TOTAL)&&
+            <div className="success-box" style={{marginBottom:8}}>
+              Acesso total ativo: este usuário poderá acessar todos os módulos e executar todas as ações do SIGFROTA, independentemente do perfil principal.
+            </div>}
+          <div className="permission-grid">
+            {permissions.map(([value,label])=><label className={'permission-option '+(value===SPECIAL_PERMISSIONS.ACESSO_TOTAL?'permission-total':'')} key={value}>
+              <input type="checkbox"
+                checked={form.permissoes_especiais.includes(value)}
+                onChange={()=>togglePermission(value)}/>
+              <span>{label}</span>
+            </label>)}
+          </div>
+        </div>
         <label className="checkbox-row"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> Usuário ativo</label>
         {error&&<div className="form-error">{error}</div>}
         <div className="form-actions"><Button variant="secondary" onClick={()=>setOpen(false)} disabled={busy}>Cancelar</Button>
