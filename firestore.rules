@@ -49,17 +49,29 @@ service cloud.firestore {
         request.resource.data.email == request.auth.token.email;
     }
 
+    function safeSelfPresenceUpdate(uid) {
+      return signedIn() &&
+        request.auth.uid == uid &&
+        resource.data.deleted != true &&
+        resource.data.status_usuario != 'EXCLUIDO' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'online',
+          'last_seen',
+          'last_login_at',
+          'last_logout_at',
+          'presence_session_id'
+        ]);
+    }
+
     match /users/{uid} {
       allow read: if canManageUsers() || (signedIn() && request.auth.uid == uid);
       allow create: if canManageUsers() || validPendingSelfRegistration(uid);
-      allow update: if canManageUsers();
+      allow update: if canManageUsers() || safeSelfPresenceUpdate(uid);
       allow delete: if isRole('gestor');
     }
 
     match /user_presence/{uid} {
-      allow read: if canManageUsers() || (signedIn() && request.auth.uid == uid);
-      allow create, update: if signedIn() && request.auth.uid == uid;
-      allow delete: if canManageUsers();
+      allow read, write: if false;
     }
 
     match /public_vehicle_tokens/{token} {
