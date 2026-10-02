@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClipboardList, Plus } from 'lucide-react';
 import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
@@ -22,6 +22,7 @@ const buildServicesFromChecklist=(checklist)=>{
 export default function MaintenanceOrders(){
   const {user,userRole}=useAuth();
   const [params]=useSearchParams();
+  const navigate=useNavigate();
   const scopeFilters=vehicleScopeFilter(user,'unit');
   const scoped=Object.keys(scopeFilters).length>0;
 
@@ -124,6 +125,7 @@ export default function MaintenanceOrders(){
 
     setForm({vehicle_id:'',workshop_id:'',priority:'media',services_requested:'',observations:''});
     setOpen(false);
+    navigate('/viaturas/'+v.id);
   };
 
   return <div>
