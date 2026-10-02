@@ -21,7 +21,28 @@ export default function Checklist(){
   const downs=useCollection('vehicleDowns',scoped?{filters:scopeFilters}:{orderBy:'created_at',direction:'desc'});
   const diagnoses=useCollection('diagnoses',scoped?{filters:scopeFilters}:{orderBy:'created_at',direction:'desc'});
 
-  const eligible=useMemo(()=>vehicles.data.filter(v=>v.deleted!==true&&['AGUARDANDO_CHECKLIST','CHECKLIST_CONCLUIDO'].includes(v.status)),[vehicles.data]);
+  const cycleForVehicle=(vehicleId)=>{
+    const down=[...downs.data]
+      .filter(d=>String(d.vehicle_id)===String(vehicleId))
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null;
+    const diagnosis=down ? [...diagnoses.data]
+      .filter(d=>String(d.vehicle_down_id||'')===String(down.id) || String(d.id||'')===String(down.diagnosis_id||''))
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null : null;
+    const checklist=down ? [...checklists.data]
+      .filter(ch=>
+        String(ch.vehicle_down_id||'')===String(down.id) ||
+        (diagnosis && String(ch.diagnosis_id||'')===String(diagnosis.id)) ||
+        String(ch.id||'')===String(down.checklist_id||'')
+      )
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null : null;
+    return {down,diagnosis,checklist};
+  };
+
+  const eligible=useMemo(()=>vehicles.data.filter(v=>{
+    if(v.deleted===true) return false;
+    const cycle=cycleForVehicle(v.id);
+    return Boolean(cycle.down && cycle.diagnosis && cycle.diagnosis.external_workshop!==false);
+  }),[vehicles.data,downs.data,diagnoses.data,checklists.data]);
   const [selected,setSelected]=useState(null);
   const initialItems=()=>Object.fromEntries(CHECKLIST_SECTIONS.map(x=>[x,{status:'OK',observation:''}]));
   const [items,setItems]=useState(initialItems());
@@ -30,19 +51,9 @@ export default function Checklist(){
   const [obs,setObs]=useState('');
   const [files,setFiles]=useState([]);
 
-  const activeDown=useMemo(()=>{
-    if(!selected) return null;
-    return [...downs.data]
-      .filter(d=>String(d.vehicle_id)===String(selected.id)&&d.status!=='OES_GERADA')
-      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null;
-  },[downs.data,selected]);
-
-  const activeDiagnosis=useMemo(()=>{
-    if(!selected) return null;
-    return [...diagnoses.data]
-      .filter(d=>String(d.vehicle_id)===String(selected.id))
-      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null;
-  },[diagnoses.data,selected]);
+  const activeCycle=useMemo(()=>selected?cycleForVehicle(selected.id):{down:null,diagnosis:null,checklist:null},[selected,downs.data,diagnoses.data,checklists.data]);
+  const activeDown=activeCycle.down;
+  const activeDiagnosis=activeCycle.diagnosis;
 
   const start=(v)=>{
     setSelected(v);
@@ -62,9 +73,7 @@ export default function Checklist(){
 
   const save=async(e)=>{
     e.preventDefault();
-    const previous=[...checklists.data]
-      .filter(c=>String(c.vehicle_id)===String(selected.id)&&['CONCLUIDO','RETIFICADO'].includes(c.status))
-      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0];
+    const previous=activeCycle.checklist;
 
     const row=await entities.checklists.create({
       vehicle_id:selected.id,
@@ -105,7 +114,15 @@ export default function Checklist(){
     });
     const vehicleId=selected.id;
     setSelected(null);
-    navigate('/viaturas/'+vehicleId);
+    navigate('/viaturas/'+vehicleId,{replace:true});
+  };
+
+  const closeChecklist=()=>{
+    const vehicleId=params.get('vehicle') || selected?.id || '';
+    setSelected(null);
+    if(params.get('vehicle') && vehicleId){
+      navigate('/viaturas/'+vehicleId,{replace:true});
+    }
   };
 
   return <div>
@@ -118,7 +135,7 @@ export default function Checklist(){
       </Card>)}</div>
     }
 
-    <Modal open={!!selected} onClose={()=>setSelected(null)} title={'Checklist • '+(selected?.prefix||'')} wide>
+    <Modal open={!!selected} onClose={closeChecklist} title={'Checklist • '+(selected?.prefix||'')} wide>
       <form onSubmit={save}>
         {(activeDown||activeDiagnosis)&&<Card className="down-context-card" style={{marginBottom:14}}>
           {activeDown&&<div className="kv"><span>Defeito da baixa</span><strong>{activeDown.defect_description||'—'}</strong></div>}
@@ -142,7 +159,7 @@ export default function Checklist(){
 
         <div style={{marginTop:14}}><Field label="Observações gerais"><Textarea value={obs} onChange={e=>setObs(e.target.value)}/></Field></div>
         <div style={{marginTop:14}}><AttachmentField max={20} value={files} onChange={setFiles}/></div>
-        <div className="form-actions"><Button variant="secondary" onClick={()=>setSelected(null)}>Cancelar</Button><Button type="submit">Concluir checklist</Button></div>
+        <div className="form-actions"><Button type="button" variant="secondary" onClick={closeChecklist}>Cancelar</Button><Button type="submit">Concluir checklist</Button></div>
       </form>
     </Modal>
   </div>;
