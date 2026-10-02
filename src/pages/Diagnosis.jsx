@@ -33,6 +33,14 @@ export default function Diagnosis(){
     if(target) setSelected(target);
   },[params,open,selected]);
 
+  const closeDiagnosis=()=>{
+    const vehicleId=params.get('vehicle') || selected?.vehicle_id || '';
+    setSelected(null);
+    if(params.get('vehicle') && vehicleId){
+      navigate('/viaturas/'+vehicleId,{replace:true});
+    }
+  };
+
   const save=async(e)=>{
     e.preventDefault();
     const diag=await entities.diagnoses.create({
@@ -75,7 +83,7 @@ export default function Diagnosis(){
       </Card>)}</div>
     }
 
-    <Modal open={!!selected} onClose={()=>setSelected(null)} title="Diagnóstico Técnico" wide>
+    <Modal open={!!selected} onClose={closeDiagnosis} title="Diagnóstico Técnico" wide>
       <form onSubmit={save} className="form-stack">
         {selected&&<Card className="down-context-card">
           <div className="kv"><span>Defeito informado na baixa</span><strong>{selected.defect_description||'—'}</strong></div>
@@ -96,7 +104,7 @@ export default function Diagnosis(){
           <Field label="Próxima etapa"><Select value={form.external_workshop?'externa':'rapida'} onChange={e=>setForm({...form,external_workshop:e.target.value==='externa'})}><option value="externa">Checklist → O.S. → Oficina</option><option value="rapida">Manutenção rápida interna</option></Select></Field>
         </div>
         <Field label="Observações"><Textarea value={form.observations} onChange={e=>setForm({...form,observations:e.target.value})}/></Field>
-        <div className="form-actions"><Button variant="secondary" onClick={()=>setSelected(null)}>Cancelar</Button><Button type="submit">Concluir e avançar</Button></div>
+        <div className="form-actions"><Button type="button" variant="secondary" onClick={closeDiagnosis}>Cancelar</Button><Button type="submit">Concluir e avançar</Button></div>
       </form>
     </Modal>
   </div>;
