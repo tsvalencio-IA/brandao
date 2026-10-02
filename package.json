@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/smoke-check.mjs"
+    "test": "node scripts/smoke-check.mjs",
+    "test:permissions": "node scripts/permissions-check.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "firebase": "^11.10.0",
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.1.0"
+    "vite": "^6.1.0",
+    "@playwright/test": "^1.55.0"
   }
 }
