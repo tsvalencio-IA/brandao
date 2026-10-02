@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext';
 import { canAccessRoute, ROLE_LABELS } from '../lib/permissions';
 import Footer from './Footer';
 import IntegrationNotifications from './IntegrationNotifications';
+import InstallAppButton from './InstallAppButton';
 import { Modal } from './ui';
 
 const groups = [
@@ -102,6 +103,7 @@ export default function Layout() {
             <strong>{APP.name}</strong>
             <span>{location.pathname === '/' ? 'Visão geral' : 'Gestão operacional'}</span>
           </div>
+          <InstallAppButton compact/>
           <IntegrationNotifications/>
           {!setupMode && <button className="mobile-top-logout" onClick={logout} title="Sair do SIGFROTA"><LogOut size={17}/><span>Sair</span></button>}
           {setupMode && (
