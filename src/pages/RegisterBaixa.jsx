@@ -27,8 +27,8 @@ export default function RegisterBaixa(){
     e.preventDefault();
     if(!vehicle) return;
     const down=await registerVehicleDown({vehicle,payload:form,actor:user});
-    await logAudit({user,role:userRole,action:'REGISTRAR_BAIXA',entity:'VehicleDown',recordId:down.id,before:'OPERANDO',after:'AGUARDANDO_DIAGNOSTICO',context:{vehicle_id:vehicle.id,vehicle_prefix:vehicle.prefix}});
-    navigate('/diagnostico');
+    await logAudit({user,role:userRole,action:'REGISTRAR_BAIXA',entity:'VehicleDown',recordId:down.id,before:'OPERANDO',after:'AGUARDANDO_DIAGNOSTICO',context:{vehicle_id:vehicle.id,vehicle_prefix:vehicle.prefix,attachments_count:form.attachments?.length||0}});
+    navigate('/viaturas/'+vehicle.id);
   };
 
   if(!list.length) return <div><PageHeader title="Registrar Baixa"/><EmptyState icon={AlertTriangle} title="Nenhuma viatura operando disponível" text="Somente viaturas operando podem receber uma nova baixa."/></div>;
