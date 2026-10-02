@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Stethoscope } from 'lucide-react';
 import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
@@ -15,6 +15,7 @@ const isImage=(a)=>String(a?.type||'').startsWith('image/')||/\.(png|jpe?g|webp|
 export default function Diagnosis(){
   const {user,userRole}=useAuth();
   const [params]=useSearchParams();
+  const navigate=useNavigate();
   const scopeFilters=vehicleScopeFilter(user,'unit');
   const downQuery=Object.keys(scopeFilters).length?{filters:scopeFilters}:{orderBy:'created_at',direction:'desc'};
   const downs=useCollection('vehicleDowns',downQuery);
@@ -54,7 +55,9 @@ export default function Diagnosis(){
       user,role:userRole,action:'DIAGNOSTICO_CONCLUIDO',entity:'Diagnosis',recordId:diag.id,
       context:{vehicle_id:selected.vehicle_id,vehicle_down_id:selected.id,destino:form.external_workshop?'CHECKLIST_OES':'MANUTENCAO_RAPIDA'}
     });
+    const vehicleId=selected.vehicle_id;
     setSelected(null);
+    navigate('/viaturas/'+vehicleId);
   };
 
   return <div>
