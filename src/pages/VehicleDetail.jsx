@@ -122,20 +122,30 @@ export default function VehicleDetail(){
   const v=vehicle.data;
   const currentKm=Math.max(Number(v.km_horimeter||0),latestOperationalKm);
 
+  const flowKey = latestOrder
+    ? 'order'
+    : latestChecklist
+      ? 'order_pending'
+      : latestDiagnosis
+        ? 'checklist'
+        : latestDown
+          ? 'diagnosis'
+          : 'down';
+
   const nextAction=()=>{
-    if(v.status==='OPERANDO'&&can.registerDown(userRole,user)) return <Link to={'/registrar-baixa?vehicle='+v.id}><Button variant="danger"><AlertTriangle size={15}/>Registrar Baixa</Button></Link>;
-    if(v.status==='AGUARDANDO_DIAGNOSTICO'&&can.diagnosis(userRole,user)) return <Link to={'/diagnostico?vehicle='+v.id}><Button><Stethoscope size={15}/>Fazer Diagnóstico</Button></Link>;
-    if(v.status==='AGUARDANDO_CHECKLIST'&&can.checklist(userRole,user)) return <Link to={'/checklist?vehicle='+v.id}><Button><ListChecks size={15}/>Fazer Checklist</Button></Link>;
-    if(v.status==='CHECKLIST_CONCLUIDO'&&can.createOES(userRole,user)) return <Link to={'/ordens?vehicle='+v.id}><Button><ClipboardList size={15}/>Gerar O.S.</Button></Link>;
-    if(latestOrder) return <Link to={'/ordens/'+latestOrder.id}><Button variant="outline"><ClipboardList size={15}/>Abrir O.S. atual</Button></Link>;
+    if(flowKey==='down'&&can.registerDown(userRole,user)) return <Link to={'/registrar-baixa?vehicle='+v.id}><Button variant="danger"><AlertTriangle size={15}/>Registrar Baixa</Button></Link>;
+    if(flowKey==='diagnosis'&&can.diagnosis(userRole,user)) return <Link to={'/diagnostico?vehicle='+v.id}><Button><Stethoscope size={15}/>Fazer Diagnóstico</Button></Link>;
+    if(flowKey==='checklist'&&can.checklist(userRole,user)) return <Link to={'/checklist?vehicle='+v.id}><Button><ListChecks size={15}/>Fazer Checklist</Button></Link>;
+    if(flowKey==='order_pending'&&can.createOES(userRole,user)) return <Link to={'/ordens?vehicle='+v.id}><Button><ClipboardList size={15}/>Gerar O.S.</Button></Link>;
+    if(flowKey==='order'&&latestOrder) return <Link to={'/ordens/'+latestOrder.id}><Button variant="outline"><ClipboardList size={15}/>Abrir O.S. atual</Button></Link>;
     return null;
   };
 
   const stepState=[
-    ['Baixa',!!latestDown,AlertTriangle],
-    ['Diagnóstico',!!latestDiagnosis,Stethoscope],
-    ['Checklist',!!latestChecklist,ListChecks],
-    ['O.S.',!!latestOrder,ClipboardList],
+    ['Baixa',!!latestDown,flowKey==='down',AlertTriangle],
+    ['Diagnóstico',!!latestDiagnosis,flowKey==='diagnosis',Stethoscope],
+    ['Checklist',!!latestChecklist,flowKey==='checklist',ListChecks],
+    ['O.S.',!!latestOrder,flowKey==='order_pending',ClipboardList],
   ];
 
   return <div>
@@ -159,10 +169,10 @@ export default function VehicleDetail(){
     <h2 className="section-title">Fluxo da manutenção</h2>
     <Card>
       <div className="maintenance-flow">
-        {stepState.map(([label,done,Icon],i)=><div className={'maintenance-step '+(done?'done':'')} key={label}>
+        {stepState.map(([label,done,current,Icon])=><div className={'maintenance-step '+(done?'done ':'')+(current?'current':'')} key={label}>
           <div className="maintenance-step-icon">{done?<CheckCircle2 size={18}/>:<Icon size={18}/>}</div>
           <strong>{label}</strong>
-          <span>{done?'Registrado':i===0&&v.status==='OPERANDO'?'Próxima etapa':'Pendente'}</span>
+          <span>{done?'Registrado':current?'Próxima etapa':'Pendente'}</span>
         </div>)}
       </div>
       <div className="flow-next-action">{nextAction()}</div>
