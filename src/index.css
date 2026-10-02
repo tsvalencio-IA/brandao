@@ -157,3 +157,10 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
   .maintenance-flow{grid-template-columns:1fr 1fr}
 }
 
+
+
+/* Aplicativo instalado: não exibir ação de instalação novamente */
+@media (display-mode: standalone) {
+  .install-app-button{display:none!important}
+}
+
