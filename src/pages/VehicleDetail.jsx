@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, QrCode, Wrench, Trash2, Pencil } from 'lucide-react';
+import {
+  ArrowLeft, AlertTriangle, QrCode, Wrench, Trash2, Pencil,
+  Stethoscope, ListChecks, ClipboardList, Camera, CheckCircle2
+} from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEntity } from '../hooks/useEntity';
 import { useCollection } from '../hooks/useCollection';
@@ -22,19 +25,41 @@ const editShape=(v)=>({
   chassis:v?.chassis||'',renavam:v?.renavam||'',patrimonio:v?.patrimonio||'',next_service_date:v?.next_service_date||''
 });
 
+const byNewest=(a,b)=>String(b.created_at||b.date_time||'').localeCompare(String(a.created_at||a.date_time||''));
+const isImage=(a)=>String(a?.type||'').startsWith('image/')||/\.(png|jpe?g|webp|gif)$/i.test(String(a?.url||''));
+const isVideo=(a)=>String(a?.type||'').startsWith('video/')||/\.(mp4|webm|mov)$/i.test(String(a?.url||''));
+
 export default function VehicleDetail(){
   const {id}=useParams();
   const {user,userRole}=useAuth();
   const navigate=useNavigate();
   const vehicle=useEntity('vehicles',id);
-  const orderFilters={vehicle_id:id,...vehicleScopeFilter(user,'unit')};
-  const opFilters={vehicle_id:id,...vehicleScopeFilter(user,'vehicle_unit')};
-  const orders=useCollection('maintenanceOrders',{filters:orderFilters});
-  const ops=useCollection('operationalLogs',{filters:opFilters});
+
+  const unitFilters=vehicleScopeFilter(user,'unit');
+  const opUnitFilters=vehicleScopeFilter(user,'vehicle_unit');
+
+  const orders=useCollection('maintenanceOrders',{filters:{vehicle_id:id,...unitFilters}});
+  const downs=useCollection('vehicleDowns',{filters:{vehicle_id:id,...unitFilters}});
+  const diagnoses=useCollection('diagnoses',{filters:{vehicle_id:id,...unitFilters}});
+  const checklists=useCollection('checklists',{filters:{vehicle_id:id,...unitFilters}});
+  const ops=useCollection('operationalLogs',{filters:{vehicle_id:id,...opUnitFilters}});
+
   const total=useMemo(()=>orders.data.reduce((s,o)=>s+Number(o.budget_total||0),0),[orders.data]);
+  const sortedDowns=useMemo(()=>[...downs.data].sort(byNewest),[downs.data]);
+  const sortedDiagnoses=useMemo(()=>[...diagnoses.data].sort(byNewest),[diagnoses.data]);
+  const sortedChecklists=useMemo(()=>[...checklists.data].sort(byNewest),[checklists.data]);
+  const sortedOrders=useMemo(()=>[...orders.data].sort(byNewest),[orders.data]);
+  const latestDown=sortedDowns[0]||null;
+  const latestDiagnosis=sortedDiagnoses[0]||null;
+  const latestChecklist=sortedChecklists[0]||null;
+  const latestOrder=sortedOrders[0]||null;
+
+  const latestOperationalKm=useMemo(()=>ops.data.reduce((max,x)=>Math.max(max,Number(x.km_initial||0)),0),[ops.data]);
+
   const [editOpen,setEditOpen]=useState(false);
   const [form,setForm]=useState({});
   const [saving,setSaving]=useState(false);
+
   const canManage=can.manageVehicles(userRole,user);
   const scopedToUnit=getVehicleScopeMode(user)==='unit'&&Boolean(user?.unit);
 
@@ -93,29 +118,125 @@ export default function VehicleDetail(){
 
   if(vehicle.loading) return <div className="full-loader inline"><span className="spinner"/></div>;
   if(!vehicle.data||vehicle.data.deleted===true) return <EmptyState icon={Wrench} title="Viatura não encontrada"/>;
+
   const v=vehicle.data;
+  const currentKm=Math.max(Number(v.km_horimeter||0),latestOperationalKm);
+
+  const nextAction=()=>{
+    if(v.status==='OPERANDO'&&can.registerDown(userRole,user)) return <Link to={'/registrar-baixa?vehicle='+v.id}><Button variant="danger"><AlertTriangle size={15}/>Registrar Baixa</Button></Link>;
+    if(v.status==='AGUARDANDO_DIAGNOSTICO'&&can.diagnosis(userRole,user)) return <Link to={'/diagnostico?vehicle='+v.id}><Button><Stethoscope size={15}/>Fazer Diagnóstico</Button></Link>;
+    if(v.status==='AGUARDANDO_CHECKLIST'&&can.checklist(userRole,user)) return <Link to={'/checklist?vehicle='+v.id}><Button><ListChecks size={15}/>Fazer Checklist</Button></Link>;
+    if(v.status==='CHECKLIST_CONCLUIDO'&&can.createOES(userRole,user)) return <Link to={'/ordens?vehicle='+v.id}><Button><ClipboardList size={15}/>Gerar O.S.</Button></Link>;
+    if(latestOrder) return <Link to={'/ordens/'+latestOrder.id}><Button variant="outline"><ClipboardList size={15}/>Abrir O.S. atual</Button></Link>;
+    return null;
+  };
+
+  const stepState=[
+    ['Baixa',!!latestDown,AlertTriangle],
+    ['Diagnóstico',!!latestDiagnosis,Stethoscope],
+    ['Checklist',!!latestChecklist,ListChecks],
+    ['O.S.',!!latestOrder,ClipboardList],
+  ];
+
   return <div>
     <PageHeader title={v.prefix} description={(v.brand||'')+' '+(v.model||'')+' • '+(v.plate||'')} actions={<>
       <Link to="/viaturas"><Button variant="secondary"><ArrowLeft size={15}/>Voltar</Button></Link>
       <Button variant="outline" onClick={showQR}><QrCode size={15}/>QR Code</Button>
-      {v.status==='OPERANDO'&&can.registerDown(userRole,user)&&<Link to={'/registrar-baixa?vehicle='+v.id}><Button variant="danger"><AlertTriangle size={15}/>Dar Baixa</Button></Link>}
+      {nextAction()}
       {canManage&&<Button variant="outline" onClick={openEdit}><Pencil size={15}/>Editar Viatura</Button>}
       {canManage&&<Button variant="danger" onClick={removeVehicle}><Trash2 size={15}/>Excluir Viatura</Button>}
     </>}/>
+
     {scopedToUnit&&<div className="scope-banner"><strong>Seu escopo:</strong> {user.unit}</div>}
+
     <div className="stats-grid">
       <div className="stat-card"><div className="stat-top">Status</div><div style={{marginTop:16}}><StatusBadge status={v.status}/></div></div>
-      <div className="stat-card"><div className="stat-top">KM atual</div><strong>{Number(v.km_horimeter||0).toLocaleString('pt-BR')}</strong></div>
-      <div className="stat-card"><div className="stat-top">Ordens</div><strong>{orders.data.length}</strong></div>
+      <div className="stat-card"><div className="stat-top">KM atual</div><strong>{currentKm.toLocaleString('pt-BR')}</strong></div>
+      <div className="stat-card"><div className="stat-top">Baixas</div><strong>{sortedDowns.length}</strong></div>
       <div className="stat-card"><div className="stat-top">Custo acumulado</div><strong style={{fontSize:18}}>{money(total)}</strong></div>
     </div>
-    <h2 className="section-title">Ficha técnica</h2><Card><div className="detail-grid">
+
+    <h2 className="section-title">Fluxo da manutenção</h2>
+    <Card>
+      <div className="maintenance-flow">
+        {stepState.map(([label,done,Icon],i)=><div className={'maintenance-step '+(done?'done':'')} key={label}>
+          <div className="maintenance-step-icon">{done?<CheckCircle2 size={18}/>:<Icon size={18}/>}</div>
+          <strong>{label}</strong>
+          <span>{done?'Registrado':i===0&&v.status==='OPERANDO'?'Próxima etapa':'Pendente'}</span>
+        </div>)}
+      </div>
+      <div className="flow-next-action">{nextAction()}</div>
+    </Card>
+
+    <h2 className="section-title">Ficha técnica</h2>
+    <Card><div className="detail-grid">
       {[['Prefixo',v.prefix],['Placa',v.plate],['Marca',v.brand],['Modelo',v.model],['Ano',v.year],['OPM',v.unit],['Código OPM',v.codigo_opm],['Modalidade',v.modalidade],['Chassi',v.chassis],['RENAVAM',v.renavam],['Patrimônio',v.patrimonio],['Próxima revisão',dateBR(v.next_service_date)]].map(([a,b])=><div className="detail-item" key={a}><span>{a}</span><strong>{b||'—'}</strong></div>)}
     </div></Card>
+
+    <h2 className="section-title">Baixas e fotos</h2>
+    {sortedDowns.length===0?<EmptyState icon={AlertTriangle} title="Nenhuma baixa registrada"/>:
+      <div className="card-list">
+        {sortedDowns.map((d,idx)=><Card key={d.id} className="vehicle-down-card">
+          <div className="vehicle-down-head">
+            <div>
+              <strong>Baixa #{sortedDowns.length-idx}</strong>
+              <span>{dateBR(d.created_at)} • KM {Number(d.km||0).toLocaleString('pt-BR')}</span>
+            </div>
+            <span className={'down-status '+String(d.status||'').toLowerCase()}>{d.status||'ABERTA'}</span>
+          </div>
+          <div className="vehicle-down-body">
+            <div className="kv"><span>Categoria</span><strong>{d.defect_category||'—'}</strong></div>
+            <div className="kv"><span>Defeito informado</span><strong>{d.defect_description||'—'}</strong></div>
+            <div className="kv"><span>Observações</span><strong>{d.observations||'—'}</strong></div>
+            <div className="kv"><span>Guincho</span><strong>{d.tow_required?'Sim':'Não'}</strong></div>
+          </div>
+          {!!d.attachments?.length&&<div className="vehicle-down-media">
+            {d.attachments.map((a,i)=>{
+              const key=a.public_id||a.url||i;
+              if(isImage(a)) return <a href={a.url} target="_blank" rel="noreferrer" className="vehicle-down-media-item" key={key}><img src={a.url} alt={a.name||'Foto da baixa'}/><span><Camera size={12}/>{a.name||'Foto '+(i+1)}</span></a>;
+              if(isVideo(a)) return <div className="vehicle-down-media-item" key={key}><video controls src={a.url}/><span>{a.name||'Vídeo '+(i+1)}</span></div>;
+              return <a href={a.url} target="_blank" rel="noreferrer" className="down-file-link" key={key}>Abrir {a.name||'arquivo '+(i+1)}</a>;
+            })}
+          </div>}
+        </Card>)}
+      </div>
+    }
+
+    {(latestDiagnosis||latestChecklist)&&<>
+      <h2 className="section-title">Última avaliação técnica</h2>
+      <Card>
+        {latestDiagnosis&&<div className="kv"><span>Diagnóstico</span><strong>{latestDiagnosis.technical_diagnosis||'—'}</strong></div>}
+        {latestDiagnosis&&<div className="kv"><span>Causa provável</span><strong>{latestDiagnosis.probable_cause||'—'}</strong></div>}
+        {latestChecklist&&<div className="kv"><span>Checklist</span><strong>{latestChecklist.status||'CONCLUIDO'} • KM {Number(latestChecklist.km||0).toLocaleString('pt-BR')}</strong></div>}
+      </Card>
+    </>}
+
     <h2 className="section-title">Ordens de manutenção</h2>
-    {orders.data.length===0?<EmptyState icon={Wrench} title="Nenhuma ordem registrada"/>:<div className="card-list">{orders.data.map(o=><Link key={o.id} to={'/ordens/'+o.id}><Card className="record-card"><div className="record-main"><h3>{o.oes_number||'Ordem sem OES'}</h3><p>{o.defect_description}</p><p>{dateBR(o.defect_date)} • {o.workshop_name||'Sem oficina'}</p></div><div className="record-side"><StatusBadge status={o.status}/>{o.budget_total>0&&<p className="small">{money(o.budget_total)}</p>}</div></Card></Link>)}</div>}
+    {sortedOrders.length===0?<EmptyState icon={Wrench} title="Nenhuma ordem registrada"/>:
+      <div className="card-list">{sortedOrders.map(o=><Link key={o.id} to={'/ordens/'+o.id}><Card className="record-card">
+        <div className="record-main"><h3>{o.oes_number||'Ordem sem OES'}</h3><p>{o.services_requested||o.defect_description}</p><p>{dateBR(o.created_at)} • {o.workshop_name||'Sem oficina'}</p></div>
+        <div className="record-side"><StatusBadge status={o.status}/>{o.budget_total>0&&<p className="small">{money(o.budget_total)}</p>}</div>
+      </Card></Link>)}</div>
+    }
+
     <h2 className="section-title">Controle operacional</h2>
-    {ops.data.length===0?<EmptyState icon={QrCode} title="Nenhum lançamento via QR Code"/>:<div className="table-wrap responsive-table"><table className="data-table"><thead><tr><th>Data</th><th>Patrulheiro</th><th>KM inicial</th><th>KM final</th></tr></thead><tbody>{ops.data.map(x=><tr key={x.id}><td data-label="Data">{dateBR(x.date)}</td><td data-label="Patrulheiro">{x.rank} {x.war_name} • RE {x.re}</td><td data-label="KM inicial">{x.km_initial}</td><td data-label="KM final">{x.km_final||'—'}</td></tr>)}</tbody></table></div>}
+    {ops.data.length===0?<EmptyState icon={QrCode} title="Nenhum lançamento via QR Code"/>:
+      <div className="table-wrap responsive-table"><table className="data-table"><thead><tr><th>Data</th><th>Patrulheiro</th><th>KM informado</th><th>Eventos</th></tr></thead><tbody>
+        {[...ops.data].sort(byNewest).map(x=>{
+          const events=[];
+          if(x.fuel_event||x.fuel_km) events.push('Abastecimento');
+          if(x.oil_change_event||x.oil_change_km) events.push('Óleo');
+          if(x.oil_filter_event||x.oil_filter_km) events.push('Filtro óleo');
+          if(x.fuel_filter_event||x.fuel_filter_km) events.push('Filtro combustível');
+          return <tr key={x.id}>
+            <td data-label="Data">{dateBR(x.date)}</td>
+            <td data-label="Patrulheiro">{x.rank} {x.war_name} • RE {x.re}</td>
+            <td data-label="KM informado">{Number(x.km_initial||0).toLocaleString('pt-BR')}</td>
+            <td data-label="Eventos">{events.length?events.join(' • '):'—'}</td>
+          </tr>;
+        })}
+      </tbody></table></div>
+    }
 
     <Modal open={editOpen} onClose={()=>!saving&&setEditOpen(false)} title="Editar Viatura" wide>
       <form onSubmit={saveEdit} className="form-stack">
