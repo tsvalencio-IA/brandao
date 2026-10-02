@@ -12,7 +12,18 @@ android {
         targetSdk 35
         versionCode 1
         versionName '1.0.0'
-        buildConfigField 'String', 'SIGFROTA_URL', '"https://sigfrota-kappa.vercel.app/"'
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.teste'
+            versionNameSuffix '-teste'
+            buildConfigField 'String', 'SIGFROTA_URL', '"https://tsvalencio-ia.github.io/brandao/"'
+        }
+        release {
+            minifyEnabled false
+            buildConfigField 'String', 'SIGFROTA_URL', '"https://sigfrota-kappa.vercel.app/"'
+        }
     }
 
     buildFeatures {
@@ -24,7 +35,6 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.webkit:webkit:1.12.1'
 }
-
 
 configurations.configureEach {
     resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
