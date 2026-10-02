@@ -19,12 +19,19 @@ export default function Diagnosis(){
   const scopeFilters=vehicleScopeFilter(user,'unit');
   const downQuery=Object.keys(scopeFilters).length?{filters:scopeFilters}:{orderBy:'created_at',direction:'desc'};
   const downs=useCollection('vehicleDowns',downQuery);
+  const diagnoses=useCollection('diagnoses',downQuery);
   const [selected,setSelected]=useState(null);
   const [form,setForm]=useState({technical_diagnosis:'',probable_cause:'',priority:'media',external_workshop:true,observations:''});
 
   const open=useMemo(()=>downs.data
-    .filter(d=>d.status!=='DIAGNOSTICADA'&&d.status!=='CHECKLIST_CONCLUIDO'&&d.status!=='OES_GERADA')
-    .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))),[downs.data]);
+    .filter(d=>{
+      const alreadyDiagnosed=diagnoses.data.some(diag=>
+        String(diag.vehicle_down_id||'')===String(d.id) ||
+        String(diag.id||'')===String(d.diagnosis_id||'')
+      );
+      return !alreadyDiagnosed && d.status!=='CHECKLIST_CONCLUIDO' && d.status!=='OES_GERADA';
+    })
+    .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))),[downs.data,diagnoses.data]);
 
   useEffect(()=>{
     const vehicleId=params.get('vehicle');
