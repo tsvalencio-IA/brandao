@@ -9,6 +9,7 @@ import { APP } from '../config/app';
 import { useAuth } from '../auth/AuthContext';
 import { canAccessRoute, ROLE_LABELS } from '../lib/permissions';
 import Footer from './Footer';
+import IntegrationNotifications from './IntegrationNotifications';
 
 const groups = [
   { label: null, items: [{ path: '/', label: 'Dashboard', icon: LayoutDashboard }] },
@@ -79,7 +80,7 @@ export default function Layout() {
           <div className="user-avatar">{(user?.displayName || user?.name || user?.email || 'U').slice(0,1).toUpperCase()}</div>
           <div className="user-meta">
             <strong>{user?.displayName || user?.name || user?.email}</strong>
-            <span>{ROLE_LABELS[userRole] || userRole}</span>
+            <span>{ROLE_LABELS[userRole] || userRole || 'Acesso personalizado'}</span>
           </div>
           {!setupMode && <button className="icon-btn sidebar-logout" onClick={logout} title="Sair"><LogOut size={16}/></button>}
         </div>
@@ -92,6 +93,7 @@ export default function Layout() {
             <strong>{APP.name}</strong>
             <span>{location.pathname === '/' ? 'Visão geral' : 'Gestão operacional'}</span>
           </div>
+          {!setupMode && <IntegrationNotifications/>}
           {setupMode && (
             <div className="setup-role">
               <Settings2 size={14}/>

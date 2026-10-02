@@ -32,6 +32,7 @@ export const SPECIAL_PERMISSIONS = {
   ACESSAR_AUDITORIA: 'acessar_auditoria',
   INATIVAR_VIATURA: 'inativar_viatura',
   APROVAR_PAGAMENTO: 'aprovar_pagamento',
+  INTEGRAR_SAAS2: 'integrar_saas2',
 };
 
 export const LEGACY_FULL_ACCESS_PERMISSIONS = [
@@ -67,6 +68,7 @@ export const SPECIAL_PERMISSION_LABELS = {
   acessar_auditoria: 'Visualizar auditoria',
   inativar_viatura: 'Inativar viatura',
   aprovar_pagamento: 'Aprovar/registrar pagamento',
+  integrar_saas2: 'Sincronizar e conversar com SAAS-2',
 };
 
 export const STATUS_LABELS = {
@@ -124,6 +126,20 @@ export function hasFullAccess(user) {
   return list.includes(SPECIAL_PERMISSIONS.ACESSO_TOTAL) || hasLegacyFullAccess(user);
 }
 
+
+export function hasAnyPermission(user) {
+  return Array.isArray(user?.permissoes_especiais) && user.permissoes_especiais.length > 0;
+}
+
+export function canEnterSystem(user) {
+  if (!user) return false;
+  if (user.deleted === true || user.status_usuario === 'EXCLUIDO') return false;
+  if (user.active === false || user.status_usuario === 'INATIVO') return false;
+  if (user.status_usuario === 'PENDENTE' || user.approval_status === 'PENDENTE') return false;
+  if (user.approval_status && !['APROVADO'].includes(user.approval_status)) return false;
+  return Boolean(user.role) || hasAnyPermission(user);
+}
+
 export function hasSpecialPermission(user, permission) {
   if (!user) return false;
   if (hasFullAccess(user)) return true;
@@ -131,8 +147,9 @@ export function hasSpecialPermission(user, permission) {
 }
 
 export function canAccessRoute(role, pathname, user = null) {
-  if (!role) return false;
+  if (!user) return false;
   if (hasFullAccess(user)) return true;
+  if (pathname === '/') return canEnterSystem(user);
 
   if (pathname === '/usuarios' || pathname.startsWith('/usuarios/')) {
     return hasSpecialPermission(user, SPECIAL_PERMISSIONS.GERENCIAR_USUARIOS);

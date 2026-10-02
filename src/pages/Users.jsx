@@ -226,6 +226,7 @@ export default function Users(){
         </div>
         <div>
           <div className="field-label">Permissões especiais</div>
+          <div className="config-note" style={{marginBottom:8}}>Você pode liberar somente 1 ação. Acesso total não é obrigatório para o usuário entrar no SIGFROTA.</div>
           {form.permissoes_especiais.includes(SPECIAL_PERMISSIONS.ACESSO_TOTAL)&&
             <div className="success-box" style={{marginBottom:8}}>
               Acesso total ativo: este usuário poderá acessar todos os módulos e executar todas as ações do SIGFROTA, independentemente do perfil principal.
@@ -239,7 +240,7 @@ export default function Users(){
             </label>)}
           </div>
         </div>
-        <label className="checkbox-row"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> Usuário ativo</label>
+        <label className="checkbox-row"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> Liberar acesso ao sistema</label>
         {error&&<div className="form-error">{error}</div>}
         <div className="form-actions"><Button variant="secondary" onClick={()=>setOpen(false)} disabled={busy}>Cancelar</Button>
           <Button type="submit" disabled={busy}>{busy?'Salvando...':mode==='approve'?'Liberar usuário':editing?'Salvar alterações':'Criar usuário'}</Button></div>

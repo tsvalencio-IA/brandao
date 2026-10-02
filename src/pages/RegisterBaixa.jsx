@@ -11,7 +11,8 @@ import { Button, Card, EmptyState, Field, Input, PageHeader, Select, Textarea } 
 
 export default function RegisterBaixa(){
   const {user,userRole}=useAuth();
-  const {data:vehicles}=useCollection('vehicles',{orderBy:'prefix',direction:'asc'});
+  const vehicleQuery=userRole==='adm_opm'&&user?.unit?{filters:{unit:user.unit}}:{orderBy:'prefix',direction:'asc'};
+  const {data:vehicles}=useCollection('vehicles',vehicleQuery);
   const [params]=useSearchParams(); const navigate=useNavigate();
   const [vehicleId,setVehicleId]=useState(params.get('vehicle')||'');
   const [form,setForm]=useState({km:'',defect_description:'',defect_category:'',priority:'media',tow_required:false,observations:'',attachments:[]});

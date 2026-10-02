@@ -21,6 +21,9 @@ export const COLLECTIONS = {
   attachments: 'attachments',
   auditLogs: 'audit_logs',
   oesCounters: 'oes_counters',
+  saas2Integrations: 'saas2_integrations',
+  saas2SyncEvents: 'saas2_sync_events',
+  saas2Chat: 'saas2_chat',
 };
 
 export const VEHICLE_STATUS = [

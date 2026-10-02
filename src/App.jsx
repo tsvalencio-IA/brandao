@@ -13,6 +13,7 @@ import MaintenanceOrders from './pages/MaintenanceOrders';
 import OrderDetail from './pages/OrderDetail';
 import Approvals from './pages/Approvals';
 import Workshops from './pages/Workshops';
+import WorkshopDetail from './pages/WorkshopDetail';
 import WorkshopPortal from './pages/WorkshopPortal';
 import QuickMaintenance from './pages/QuickMaintenance';
 import Stock from './pages/Stock';
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/ordens/:id" element={<OrderDetail/>}/>
           <Route path="/aprovacoes" element={<Approvals/>}/>
           <Route path="/oficinas" element={<Workshops/>}/>
+          <Route path="/oficinas/:id" element={<WorkshopDetail/>}/>
           <Route path="/portal-oficina" element={<WorkshopPortal/>}/>
           <Route path="/manutencao-rapida" element={<QuickMaintenance/>}/>
           <Route path="/estoque" element={<Stock/>}/>

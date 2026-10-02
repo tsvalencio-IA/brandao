@@ -5,9 +5,18 @@ export function useCollection(entityName, options = {}) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const key = JSON.stringify(options);
+  const enabled = options.enabled !== false;
+  const queryOptions = { ...options };
+  delete queryOptions.enabled;
+  const key = JSON.stringify(queryOptions);
 
   useEffect(() => {
+    if (!enabled) {
+      setData([]);
+      setError(null);
+      setLoading(false);
+      return undefined;
+    }
     setLoading(true);
     setError(null);
     const entity = entities[entityName];
@@ -24,7 +33,7 @@ export function useCollection(entityName, options = {}) {
       setLoading(false);
     });
     return unsubscribe;
-  }, [entityName, key]);
+  }, [entityName, key, enabled]);
 
   return useMemo(() => ({ data, loading, error }), [data, loading, error]);
 }

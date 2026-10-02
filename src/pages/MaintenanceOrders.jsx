@@ -13,8 +13,9 @@ import { dateBR, money } from '../lib/format';
 
 export default function MaintenanceOrders(){
   const {user,userRole}=useAuth();
-  const orders=useCollection('maintenanceOrders',{orderBy:'created_at',direction:'desc'});
-  const vehicles=useCollection('vehicles',{orderBy:'prefix',direction:'asc'});
+  const scoped=userRole==='adm_opm'&&user?.unit;
+  const orders=useCollection('maintenanceOrders',scoped?{filters:{unit:user.unit}}:{orderBy:'created_at',direction:'desc'});
+  const vehicles=useCollection('vehicles',scoped?{filters:{unit:user.unit}}:{orderBy:'prefix',direction:'asc'});
   const workshops=useCollection('workshops',{orderBy:'name',direction:'asc'});
   const [search,setSearch]=useState('');
   const [open,setOpen]=useState(false);
@@ -46,7 +47,7 @@ export default function MaintenanceOrders(){
     setForm({vehicle_id:'',workshop_id:'',priority:'media',services_requested:'',observations:''}); setOpen(false);
   };
 
-  return <div><PageHeader title="Ordens de Manutenção" description={filtered.length+' ordem(ns)'} actions={can.createOES(userRole)&&<Button onClick={()=>setOpen(true)}><Plus size={15}/>Gerar OES</Button>}/>
+  return <div><PageHeader title="Ordens de Manutenção" description={filtered.length+' ordem(ns)'} actions={can.createOES(userRole,user)&&<Button onClick={()=>setOpen(true)}><Plus size={15}/>Gerar OES</Button>}/>
     <div className="toolbar"><div className="search-field"><Input placeholder="Buscar por OES, viatura ou oficina..." value={search} onChange={e=>setSearch(e.target.value)}/></div></div>
     {filtered.length===0?<EmptyState icon={ClipboardList} title="Nenhuma ordem de manutenção"/>:<div className="card-list">{filtered.map(o=><Link key={o.id} to={'/ordens/'+o.id}><Card className="record-card"><div className="record-main"><h3>{o.oes_number||'Ordem'}</h3><p>{o.vehicle_prefix} • {o.vehicle_plate} • {o.workshop_name||'Sem oficina'}</p><p>{o.services_requested||o.defect_description||'Sem descrição'} • {dateBR(o.created_at)}</p></div><div className="record-side"><StatusBadge status={o.status}/>{Number(o.budget_total||0)>0&&<p className="small">{money(o.budget_total)}</p>}</div></Card></Link>)}</div>}
     <Modal open={open} onClose={()=>setOpen(false)} title="Gerar OES" wide><form onSubmit={save} className="form-stack">

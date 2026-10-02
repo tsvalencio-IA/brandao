@@ -4,14 +4,27 @@ import { useAuth } from '../auth/AuthContext';
 import { useCollection } from '../hooks/useCollection';
 import { money } from '../lib/format';
 import { EmptyState, PageHeader, Stat } from '../components/ui';
+import { canAccessRoute } from '../lib/permissions';
 
 export default function Dashboard() {
   const { user, userRole } = useAuth();
-  const vehicles = useCollection('vehicles', { orderBy: 'created_at', direction: 'desc' });
-  const downs = useCollection('vehicleDowns', { orderBy: 'created_at', direction: 'desc' });
-  const orders = useCollection('maintenanceOrders', { orderBy: 'created_at', direction: 'desc' });
-  const flows = useCollection('financialFlows', { orderBy: 'created_at', direction: 'desc' });
-  const parts = useCollection('parts', { orderBy: 'name', direction: 'asc' });
+
+  const canVehicles = ['/viaturas','/registrar-baixa','/diagnostico','/checklist','/ordens','/manutencao-rapida','/controle-operacional']
+    .some(path => canAccessRoute(userRole, path, user));
+  const canDowns = ['/registrar-baixa','/diagnostico','/checklist','/ordens']
+    .some(path => canAccessRoute(userRole, path, user));
+  const canOrders = ['/ordens','/aprovacoes','/portal-oficina','/uge','/relatorios-uge']
+    .some(path => canAccessRoute(userRole, path, user));
+  const canFinance = ['/uge','/relatorios-uge'].some(path => canAccessRoute(userRole, path, user));
+  const canParts = ['/estoque','/manutencao-rapida'].some(path => canAccessRoute(userRole, path, user));
+
+  const scoped = userRole === 'adm_opm' && user?.unit;
+
+  const vehicles = useCollection('vehicles', scoped ? {filters:{unit:user.unit},enabled:canVehicles} : {orderBy:'created_at',direction:'desc',enabled:canVehicles});
+  const downs = useCollection('vehicleDowns', scoped ? {filters:{unit:user.unit},enabled:canDowns} : {orderBy:'created_at',direction:'desc',enabled:canDowns});
+  const orders = useCollection('maintenanceOrders', scoped ? {filters:{unit:user.unit},enabled:canOrders} : {orderBy:'created_at',direction:'desc',enabled:canOrders});
+  const flows = useCollection('financialFlows', { orderBy: 'created_at', direction: 'desc', enabled: canFinance });
+  const parts = useCollection('parts', { orderBy: 'name', direction: 'asc', enabled: canParts });
 
   const filteredVehicles = useMemo(() => {
     if (userRole === 'adm_opm' && user?.unit) return vehicles.data.filter(v => v.unit === user.unit);

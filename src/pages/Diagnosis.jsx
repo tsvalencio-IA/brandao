@@ -9,7 +9,8 @@ import { dateBR } from '../lib/format';
 
 export default function Diagnosis(){
   const {user,userRole}=useAuth();
-  const downs=useCollection('vehicleDowns',{orderBy:'created_at',direction:'desc'});
+  const downQuery=userRole==='adm_opm'&&user?.unit?{filters:{unit:user.unit}}:{orderBy:'created_at',direction:'desc'};
+  const downs=useCollection('vehicleDowns',downQuery);
   const [selected,setSelected]=useState(null);
   const [form,setForm]=useState({technical_diagnosis:'',probable_cause:'',priority:'media',external_workshop:true,observations:''});
   const open=downs.data.filter(d=>d.status!=='DIAGNOSTICADA');
@@ -17,7 +18,7 @@ export default function Diagnosis(){
   const save=async(e)=>{
     e.preventDefault();
     const diag=await entities.diagnoses.create({
-      vehicle_id:selected.vehicle_id, vehicle_down_id:selected.id, mechanic_id:user.uid,
+      vehicle_id:selected.vehicle_id, vehicle_down_id:selected.id, unit:selected.unit||'', mechanic_id:user.uid,
       reported_defect:selected.defect_description, ...form, status:'CONCLUIDO'
     });
     await entities.vehicleDowns.update(selected.id,{status:'DIAGNOSTICADA',diagnosis_id:diag.id});

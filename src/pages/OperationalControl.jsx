@@ -9,7 +9,7 @@ import { dateBR } from '../lib/format';
 
 export default function OperationalControl(){
   const {user,userRole}=useAuth();
-  const logs=useCollection('operationalLogs',{orderBy:'created_at',direction:'desc'});
+  const logs=useCollection('operationalLogs',userRole==='adm_opm'&&user?.unit?{filters:{vehicle_unit:user.unit}}:{orderBy:'created_at',direction:'desc'});
   const [search,setSearch]=useState('');
   const [edit,setEdit]=useState(null);
   const [form,setForm]=useState({km_initial:'',km_final:'',observations:'',justification:''});

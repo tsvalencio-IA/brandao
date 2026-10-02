@@ -4,6 +4,7 @@ import { ArrowLeft, AlertTriangle, QrCode, Wrench } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEntity } from '../hooks/useEntity';
 import { useCollection } from '../hooks/useCollection';
+import { useAuth } from '../auth/AuthContext';
 import { APP } from '../config/app';
 import { Button, Card, EmptyState, PageHeader } from '../components/ui';
 import StatusBadge from '../components/StatusBadge';
@@ -11,9 +12,12 @@ import { dateBR, money } from '../lib/format';
 
 export default function VehicleDetail(){
   const {id}=useParams();
+  const {user,userRole}=useAuth();
   const vehicle=useEntity('vehicles',id);
-  const orders=useCollection('maintenanceOrders',{filters:{vehicle_id:id},orderBy:'created_at',direction:'desc'});
-  const ops=useCollection('operationalLogs',{filters:{vehicle_id:id},orderBy:'created_at',direction:'desc'});
+  const orderFilters={vehicle_id:id,...(userRole==='adm_opm'&&user?.unit?{unit:user.unit}:{})};
+  const opFilters={vehicle_id:id,...(userRole==='adm_opm'&&user?.unit?{vehicle_unit:user.unit}:{})};
+  const orders=useCollection('maintenanceOrders',{filters:orderFilters});
+  const ops=useCollection('operationalLogs',{filters:opFilters});
   const total=useMemo(()=>orders.data.reduce((s,o)=>s+Number(o.budget_total||0),0),[orders.data]);
 
   const showQR=async()=>{

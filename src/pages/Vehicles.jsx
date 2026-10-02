@@ -15,7 +15,8 @@ const empty = { prefix:'', plate:'', brand:'', model:'', year:'', vehicle_type:'
 
 export default function Vehicles() {
   const { user, userRole } = useAuth();
-  const { data, loading } = useCollection('vehicles', { orderBy:'created_at', direction:'desc' });
+  const vehicleQuery = userRole==='adm_opm' && user?.unit ? {filters:{unit:user.unit}} : {orderBy:'created_at',direction:'desc'};
+  const { data, loading } = useCollection('vehicles', vehicleQuery);
   const [search,setSearch]=useState('');
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState(empty);
@@ -61,7 +62,7 @@ export default function Vehicles() {
   };
 
   return <div>
-    <PageHeader title="Viaturas" description={rows.length+' viatura(s) encontrada(s)'} actions={can.manageVehicles(userRole)&&<>
+    <PageHeader title="Viaturas" description={rows.length+' viatura(s) encontrada(s)'} actions={can.manageVehicles(userRole,user)&&<>
       <label className="btn btn-secondary"><Upload size={15}/> Importar Excel/CSV<input hidden type="file" accept=".xlsx,.xls,.csv" onChange={importFile}/></label>
       <Button onClick={()=>setOpen(true)}><Plus size={15}/>Cadastrar Viatura</Button>
     </>}/>

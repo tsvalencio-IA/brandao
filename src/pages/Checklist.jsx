@@ -10,8 +10,9 @@ import { Button, Card, EmptyState, Field, Input, Modal, PageHeader, Select, Text
 
 export default function Checklist(){
   const {user,userRole}=useAuth();
-  const vehicles=useCollection('vehicles',{orderBy:'prefix',direction:'asc'});
-  const checklists=useCollection('checklists',{orderBy:'created_at',direction:'desc'});
+  const scoped=userRole==='adm_opm'&&user?.unit;
+  const vehicles=useCollection('vehicles',scoped?{filters:{unit:user.unit}}:{orderBy:'prefix',direction:'asc'});
+  const checklists=useCollection('checklists',scoped?{filters:{unit:user.unit}}:{orderBy:'created_at',direction:'desc'});
   const eligible=vehicles.data.filter(v=>['AGUARDANDO_CHECKLIST','CHECKLIST_CONCLUIDO'].includes(v.status));
   const [selected,setSelected]=useState(null);
   const initialItems=Object.fromEntries(CHECKLIST_SECTIONS.map(x=>[x,{status:'OK',observation:''}]));
@@ -23,7 +24,7 @@ export default function Checklist(){
     e.preventDefault();
     const previous=checklists.data.find(c=>c.vehicle_id===selected.id&&c.status==='CONCLUIDO');
     const row=await entities.checklists.create({
-      vehicle_id:selected.id,vehicle_prefix:selected.prefix,vehicle_plate:selected.plate,km:Number(km||0),fuel_level:fuel,
+      vehicle_id:selected.id,vehicle_prefix:selected.prefix,vehicle_plate:selected.plate,unit:selected.unit||'',km:Number(km||0),fuel_level:fuel,
       items,photos:files,observations:obs,mechanic_id:user.uid,mechanic_name:user.displayName||user.email,
       status:previous?'RETIFICADO':'CONCLUIDO',previous_version_id:previous?.id||null
     });
