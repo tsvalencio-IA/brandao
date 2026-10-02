@@ -37,24 +37,45 @@ export default function MaintenanceOrders(){
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState({vehicle_id:'',workshop_id:'',priority:'media',services_requested:'',observations:''});
 
-  const eligible=vehicles.data.filter(v=>v.deleted!==true&&['CHECKLIST_CONCLUIDO','AGUARDANDO_ORCAMENTO','AGUARDANDO_CHECKLIST'].includes(v.status));
   const filtered=useMemo(()=>orders.data.filter(o=>{
     if(userRole==='oficina' && user?.workshop_id && o.workshop_id!==user.workshop_id) return false;
     const q=search.toLowerCase();
     return !q||[o.oes_number,o.vehicle_prefix,o.vehicle_plate,o.workshop_name,o.defect_description].some(x=>String(x||'').toLowerCase().includes(q));
   }),[orders.data,search,userRole,user?.workshop_id]);
 
-  const latestChecklist=(vehicleId)=>[...checklists.data]
-    .filter(c=>String(c.vehicle_id)===String(vehicleId))
-    .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null;
+  const cycleForVehicle=(vehicleId)=>{
+    const down=[...downs.data]
+      .filter(d=>String(d.vehicle_id)===String(vehicleId))
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null;
+    const diagnosis=down ? [...diagnoses.data]
+      .filter(d=>String(d.vehicle_down_id||'')===String(down.id) || String(d.id||'')===String(down.diagnosis_id||''))
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null : null;
+    const checklist=down ? [...checklists.data]
+      .filter(ch=>
+        String(ch.vehicle_down_id||'')===String(down.id) ||
+        (diagnosis && String(ch.diagnosis_id||'')===String(diagnosis.id)) ||
+        String(ch.id||'')===String(down.checklist_id||'')
+      )
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null : null;
+    const order=down ? [...orders.data]
+      .filter(o=>
+        String(o.vehicle_down_id||'')===String(down.id) ||
+        (checklist && String(o.checklist_id||'')===String(checklist.id)) ||
+        String(o.id||'')===String(down.maintenance_order_id||'')
+      )
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null : null;
+    return {down,diagnosis,checklist,order};
+  };
 
-  const latestDown=(vehicleId)=>[...downs.data]
-    .filter(d=>String(d.vehicle_id)===String(vehicleId)&&d.status!=='OES_GERADA')
-    .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null;
+  const eligible=vehicles.data.filter(v=>{
+    if(v.deleted===true) return false;
+    const cycle=cycleForVehicle(v.id);
+    return Boolean(cycle.down && cycle.diagnosis && cycle.checklist && !cycle.order);
+  });
 
-  const latestDiagnosis=(vehicleId)=>[...diagnoses.data]
-    .filter(d=>String(d.vehicle_id)===String(vehicleId))
-    .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0]||null;
+  const latestChecklist=(vehicleId)=>cycleForVehicle(vehicleId).checklist;
+  const latestDown=(vehicleId)=>cycleForVehicle(vehicleId).down;
+  const latestDiagnosis=(vehicleId)=>cycleForVehicle(vehicleId).diagnosis;
 
   const chooseVehicle=(vehicleId)=>{
     const checklist=latestChecklist(vehicleId);
@@ -125,7 +146,15 @@ export default function MaintenanceOrders(){
 
     setForm({vehicle_id:'',workshop_id:'',priority:'media',services_requested:'',observations:''});
     setOpen(false);
-    navigate('/viaturas/'+v.id);
+    navigate('/viaturas/'+v.id,{replace:true});
+  };
+
+  const closeOrderModal=()=>{
+    const vehicleId=params.get('vehicle') || form.vehicle_id || '';
+    setOpen(false);
+    if(params.get('vehicle') && vehicleId){
+      navigate('/viaturas/'+vehicleId,{replace:true});
+    }
   };
 
   return <div>
@@ -144,7 +173,7 @@ export default function MaintenanceOrders(){
       </Card></Link>)}</div>
     }
 
-    <Modal open={open} onClose={()=>setOpen(false)} title="Gerar OES" wide>
+    <Modal open={open} onClose={closeOrderModal} title="Gerar OES" wide>
       <form onSubmit={save} className="form-stack">
         <div className="form-grid">
           <Field label="Viatura" required>
@@ -172,7 +201,7 @@ export default function MaintenanceOrders(){
         </Field>
 
         <Field label="Observações"><Textarea value={form.observations} onChange={e=>setForm({...form,observations:e.target.value})}/></Field>
-        <div className="form-actions"><Button variant="secondary" onClick={()=>setOpen(false)}>Cancelar</Button><Button type="submit">Gerar OES</Button></div>
+        <div className="form-actions"><Button type="button" variant="secondary" onClick={closeOrderModal}>Cancelar</Button><Button type="submit">Gerar OES</Button></div>
       </form>
     </Modal>
   </div>;
