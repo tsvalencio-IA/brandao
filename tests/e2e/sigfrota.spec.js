@@ -78,6 +78,13 @@ async function expectNoHorizontalOverflow(page,label='page'){
 test.describe('SIGFROTA sem Firebase real',()=>{
   test.beforeEach(async({context})=>{ await seedLocal(context); });
 
+  test('ambiente isolado está ativo e não usa tela de login',async({page})=>{
+    await page.goto('/#/');
+    await stable(page);
+    await expect(page.getByText('Modo de configuração ativo')).toBeVisible();
+    await expect(page.getByRole('button',{name:'Entrar'})).toHaveCount(0);
+  });
+
   test('fluxo completo Baixa -> Diagnóstico -> Checklist -> O.S.',async({page})=>{
     await page.goto('/#/viaturas/v1');
     await stable(page);
