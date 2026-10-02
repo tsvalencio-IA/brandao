@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext';
 import { canAccessRoute, ROLE_LABELS } from '../lib/permissions';
 import Footer from './Footer';
 import IntegrationNotifications from './IntegrationNotifications';
+import { Modal } from './ui';
 
 const groups = [
   { label: null, items: [{ path: '/', label: 'Dashboard', icon: LayoutDashboard }] },
@@ -42,6 +43,7 @@ const groups = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { user, userRole, logout, setupMode, switchSetupRole } = useAuth();
   const location = useLocation();
 
@@ -77,11 +79,18 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-user">
-          <div className="user-avatar">{(user?.displayName || user?.name || user?.email || 'U').slice(0,1).toUpperCase()}</div>
-          <div className="user-meta">
-            <strong>{user?.displayName || user?.name || user?.email}</strong>
-            <span>{ROLE_LABELS[userRole] || userRole || 'Acesso personalizado'}</span>
-          </div>
+          <button
+            type="button"
+            className="sidebar-profile-button"
+            onClick={() => setProfileOpen(true)}
+            title="Ver meus dados cadastrais"
+          >
+            <div className="user-avatar">{(user?.displayName || user?.name || user?.email || 'U').slice(0,1).toUpperCase()}</div>
+            <div className="user-meta">
+              <strong>{user?.displayName || user?.name || user?.email}</strong>
+              <span>{ROLE_LABELS[userRole] || userRole || 'Acesso personalizado'}</span>
+            </div>
+          </button>
           {!setupMode && <button className="icon-btn sidebar-logout" onClick={logout} title="Sair"><LogOut size={16}/></button>}
         </div>
       </aside>
@@ -113,6 +122,31 @@ export default function Layout() {
         <main className="page-content"><Outlet context={{ user, userRole }} /></main>
         <Footer />
       </div>
+
+      <Modal open={profileOpen} title="Meus dados cadastrais" onClose={() => setProfileOpen(false)}>
+        <div className="my-profile-card">
+          <div className="my-profile-head">
+            <div className="my-profile-avatar">{(user?.displayName || user?.name || user?.nome_guerra || user?.email || 'U').slice(0,1).toUpperCase()}</div>
+            <div>
+              <strong>{user?.nome_guerra || user?.displayName || user?.name || 'Usuário'}</strong>
+              <span>{ROLE_LABELS[userRole] || userRole || 'Acesso personalizado'}</span>
+            </div>
+          </div>
+          <div className="my-profile-grid">
+            <div className="my-profile-field"><span>Nome</span><strong>{user?.name || user?.displayName || '—'}</strong></div>
+            <div className="my-profile-field"><span>Nome de guerra</span><strong>{user?.nome_guerra || '—'}</strong></div>
+            <div className="my-profile-field"><span>E-mail</span><strong>{user?.email || '—'}</strong></div>
+            <div className="my-profile-field"><span>Perfil</span><strong>{ROLE_LABELS[userRole] || userRole || '—'}</strong></div>
+            <div className="my-profile-field"><span>OPM / Unidade</span><strong>{user?.unit || '—'}</strong></div>
+            <div className="my-profile-field"><span>Posto / Graduação</span><strong>{user?.posto_graduacao || '—'}</strong></div>
+            <div className="my-profile-field"><span>RE</span><strong>{user?.re || '—'}</strong></div>
+            <div className="my-profile-field"><span>Função</span><strong>{user?.job_function || '—'}</strong></div>
+            {user?.workshop_name && <div className="my-profile-field my-profile-wide"><span>Oficina</span><strong>{user.workshop_name}</strong></div>}
+            <div className="my-profile-field my-profile-wide"><span>Status</span><strong>{user?.active === false ? 'INATIVO' : (user?.status_usuario || 'ATIVO')}</strong></div>
+          </div>
+          <p className="my-profile-note">Dados somente para consulta. Alterações cadastrais são realizadas pela gestão de usuários.</p>
+        </div>
+      </Modal>
     </div>
   );
 }
