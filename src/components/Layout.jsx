@@ -93,7 +93,7 @@ export default function Layout() {
             <strong>{APP.name}</strong>
             <span>{location.pathname === '/' ? 'Visão geral' : 'Gestão operacional'}</span>
           </div>
-          {!setupMode && <IntegrationNotifications/>}
+          <IntegrationNotifications/>
           {setupMode && (
             <div className="setup-role">
               <Settings2 size={14}/>

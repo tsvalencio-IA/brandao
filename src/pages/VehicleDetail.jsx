@@ -1,10 +1,13 @@
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, QrCode, Wrench } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, AlertTriangle, QrCode, Wrench, Trash2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEntity } from '../hooks/useEntity';
 import { useCollection } from '../hooks/useCollection';
 import { useAuth } from '../auth/AuthContext';
+import { entities } from '../data/repository';
+import { hasFullAccess } from '../lib/permissions';
+import { logAudit } from '../services/audit';
 import { APP } from '../config/app';
 import { Button, Card, EmptyState, PageHeader } from '../components/ui';
 import StatusBadge from '../components/StatusBadge';
@@ -13,12 +16,23 @@ import { dateBR, money } from '../lib/format';
 export default function VehicleDetail(){
   const {id}=useParams();
   const {user,userRole}=useAuth();
+  const navigate=useNavigate();
   const vehicle=useEntity('vehicles',id);
   const orderFilters={vehicle_id:id,...(userRole==='adm_opm'&&user?.unit?{unit:user.unit}:{})};
   const opFilters={vehicle_id:id,...(userRole==='adm_opm'&&user?.unit?{vehicle_unit:user.unit}:{})};
   const orders=useCollection('maintenanceOrders',{filters:orderFilters});
   const ops=useCollection('operationalLogs',{filters:opFilters});
   const total=useMemo(()=>orders.data.reduce((s,o)=>s+Number(o.budget_total||0),0),[orders.data]);
+
+  const removeVehicle=async()=>{
+    if(!hasFullAccess(user)||!vehicle.data) return;
+    if(!window.confirm('Excluir esta viatura do SIGFROTA? Os registros históricos já existentes serão preservados.')) return;
+    const before={...vehicle.data};
+    try{if(vehicle.data.qr_token) await entities.publicVehicleTokens.remove(vehicle.data.qr_token)}catch{}
+    await entities.vehicles.remove(id);
+    await logAudit({user,role:userRole,action:'VIATURA_EXCLUIDA',entity:'Vehicle',recordId:id,before});
+    navigate('/viaturas');
+  };
 
   const showQR=async()=>{
     if(!vehicle.data?.qr_token) return;
@@ -37,6 +51,7 @@ export default function VehicleDetail(){
       <Link to="/viaturas"><Button variant="secondary"><ArrowLeft size={15}/>Voltar</Button></Link>
       <Button variant="outline" onClick={showQR}><QrCode size={15}/>QR Code</Button>
       {v.status==='OPERANDO'&&<Link to={'/registrar-baixa?vehicle='+v.id}><Button variant="danger"><AlertTriangle size={15}/>Dar Baixa</Button></Link>}
+      {hasFullAccess(user)&&<Button variant="danger" onClick={removeVehicle}><Trash2 size={15}/>Excluir Viatura</Button>}
     </>}/>
     <div className="stats-grid">
       <div className="stat-card"><div className="stat-top">Status</div><div style={{marginTop:16}}><StatusBadge status={v.status}/></div></div>

@@ -56,12 +56,12 @@ service cloud.firestore {
     function canChecklist() { return fullAccess() || roleIn(['gestor','mecanico']) || hasPermission('checklist'); }
     function canOES() { return fullAccess() || roleIn(['gestor','mecanico']) || hasPermission('gerar_oes'); }
     function canApproveBudget() { return fullAccess() || roleIn(['gestor','adm']) || hasPermission('aprovar_orcamento'); }
+    function canManageWorkshops() { return fullAccess() || roleIn(['gestor','adm']) || hasPermission('gerenciar_oficinas'); }
     function canUGE() { return fullAccess() || roleIn(['gestor','adm','uge']) || hasPermission('acessar_uge'); }
     function canStock() { return fullAccess() || roleIn(['gestor','mecanico']) || hasPermission('gerenciar_estoque'); }
     function canQuickMaintenance() { return fullAccess() || roleIn(['gestor','mecanico']) || hasPermission('manutencao_rapida'); }
     function canOperationalControl() { return fullAccess() || roleIn(['gestor','adm','adm_opm','mecanico']) || hasPermission('corrigir_operacional'); }
     function canSeeAudit() { return fullAccess() || hasPermission('acessar_auditoria'); }
-    function canSaas2Bridge() { return fullAccess() || roleIn(['gestor','adm']) || hasPermission('gerenciar_oficinas') || hasPermission('integrar_saas2'); }
 
     function needsVehicleRead() {
       return fullAccess() ||
@@ -170,9 +170,24 @@ service cloud.firestore {
     }
 
     match /workshops/{id} {
-      allow read: if activeUser() && (fullAccess() || canOES() || canApproveBudget() || profile().role == 'oficina' || hasPermission('gerenciar_oficinas'));
-      allow create, update: if fullAccess() || roleIn(['gestor','adm']) || hasPermission('gerenciar_oficinas');
-      allow delete: if fullAccess();
+      allow read: if activeUser() && (fullAccess() || canOES() || canApproveBudget() || profile().role == 'oficina' || canManageWorkshops());
+      allow create, update, delete: if activeUser() && canManageWorkshops();
+    }
+
+    match /saas2_integrations/{id} {
+      allow read: if activeUser() && (canManageWorkshops() || canOES() || canApproveBudget());
+      allow create, update, delete: if activeUser() && canManageWorkshops();
+    }
+
+    match /saas2_sync_events/{id} {
+      allow read: if activeUser() && (canManageWorkshops() || canOES() || canApproveBudget());
+      allow create, delete: if activeUser() && canManageWorkshops();
+      allow update: if false;
+    }
+
+    match /saas2_chat/{id} {
+      allow read, create, update: if activeUser() && (canManageWorkshops() || canOES() || canApproveBudget());
+      allow delete: if activeUser() && canManageWorkshops();
     }
 
     match /parts/{id} {
@@ -249,27 +264,6 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
       allow read: if activeUser() && canSeeAudit();
       allow update, delete: if false;
-    }
-
-
-    match /saas2_integrations/{id} {
-      allow read: if activeUser() && (canSaas2Bridge() || canOES() || canApproveBudget());
-      allow create, update: if activeUser() && canSaas2Bridge();
-      allow delete: if fullAccess();
-    }
-
-    match /saas2_sync_events/{id} {
-      allow read: if activeUser() && (canSaas2Bridge() || canOES() || canApproveBudget());
-      allow create: if activeUser() && canSaas2Bridge();
-      allow update, delete: if false;
-    }
-
-    match /saas2_chat/{id} {
-      allow read: if activeUser() && (canSaas2Bridge() || canOES() || canApproveBudget());
-      allow create: if activeUser() && (canSaas2Bridge() || canOES() || canApproveBudget());
-      allow update: if activeUser() && (canSaas2Bridge() || canOES() || canApproveBudget()) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read_sigfrota','read_jarvis','updated_at']);
-      allow delete: if fullAccess();
     }
 
     match /{document=**} { allow read, write: if false; }
