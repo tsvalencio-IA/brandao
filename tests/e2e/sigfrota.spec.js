@@ -79,14 +79,14 @@ test.describe('SIGFROTA sem Firebase real',()=>{
   test.beforeEach(async({context})=>{ await seedLocal(context); });
 
   test('ambiente isolado está ativo e não usa tela de login',async({page})=>{
-    await page.goto('/#/');
+    await page.goto('/app.html#/');
     await stable(page);
     await expect(page.getByText('Modo de configuração ativo')).toBeVisible();
     await expect(page.getByRole('button',{name:'Entrar'})).toHaveCount(0);
   });
 
   test('fluxo completo Baixa -> Diagnóstico -> Checklist -> O.S.',async({page})=>{
-    await page.goto('/#/viaturas/v1');
+    await page.goto('/app.html#/viaturas/v1');
     await stable(page);
     await expect(page.getByRole('heading',{name:'I-52100'})).toBeVisible();
     await page.getByRole('button',{name:/Registrar Baixa/i}).click();
@@ -94,7 +94,7 @@ test.describe('SIGFROTA sem Firebase real',()=>{
     await page.getByLabel('Categoria').selectOption({label:'Motor'});
     await page.getByLabel('Descrição do defeito').fill('Falha em teste local');
     await page.getByRole('button',{name:'Registrar Baixa'}).click();
-    await expect(page).toHaveURL(/#\/viaturas\/v1$/);
+    await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
     await expect(page.getByText('Baixas e fotos')).toBeVisible();
     await expect(page.getByRole('button',{name:'Fazer Diagnóstico'})).toBeVisible();
 
@@ -102,61 +102,61 @@ test.describe('SIGFROTA sem Firebase real',()=>{
     await expect(page.getByRole('heading',{name:'Diagnóstico Técnico'})).toBeVisible();
     await page.getByLabel('Diagnóstico técnico').fill('Diagnóstico de teste local');
     await page.getByRole('button',{name:'Concluir e avançar'}).click();
-    await expect(page).toHaveURL(/#\/viaturas\/v1$/);
+    await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
     await expect(page.getByRole('button',{name:'Fazer Checklist'})).toBeVisible();
 
     await page.getByRole('button',{name:'Fazer Checklist'}).click();
     await expect(page.getByRole('heading',{name:/Checklist • I-52100/})).toBeVisible();
     await page.getByRole('button',{name:'Concluir checklist'}).click();
-    await expect(page).toHaveURL(/#\/viaturas\/v1$/);
+    await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
     await expect(page.getByRole('button',{name:'Gerar O\.S\.'})).toBeVisible();
 
     await page.getByRole('button',{name:'Gerar O.S.'}).click();
     await expect(page.getByRole('heading',{name:'Gerar OES'})).toBeVisible();
     await page.getByLabel('Oficina').selectOption('w1');
     await page.getByRole('button',{name:'Gerar OES'}).click();
-    await expect(page).toHaveURL(/#\/viaturas\/v1$/);
+    await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
     await expect(page.getByRole('button',{name:/Abrir O\.S\. atual/})).toBeVisible();
     await expectNoHorizontalOverflow(page,'fluxo final');
   });
 
   test('Cancelar Diagnóstico volta à viatura e não reabre',async({page})=>{
-    await page.goto('/#/diagnostico?vehicle=v2');
+    await page.goto('/app.html#/diagnostico?vehicle=v2');
     await stable(page);
     await expect(page.getByRole('heading',{name:'Diagnóstico Técnico'})).toBeVisible();
     await page.getByRole('button',{name:'Cancelar'}).click();
-    await expect(page).toHaveURL(/#\/viaturas\/v2$/);
+    await expect(page).toHaveURL(/app\.html#\/viaturas\/v2$/);
     await expect(page.getByRole('heading',{name:'Diagnóstico Técnico'})).toHaveCount(0);
   });
 
   test('Cancelar Checklist volta à viatura e não reabre',async({page})=>{
-    await page.goto('/#/checklist?vehicle=v3');
+    await page.goto('/app.html#/checklist?vehicle=v3');
     await stable(page);
     await expect(page.getByRole('heading',{name:/Checklist • I-52300/})).toBeVisible();
     await page.getByRole('button',{name:'Cancelar'}).click();
-    await expect(page).toHaveURL(/#\/viaturas\/v3$/);
+    await expect(page).toHaveURL(/app\.html#\/viaturas\/v3$/);
     await expect(page.getByRole('heading',{name:/Checklist •/})).toHaveCount(0);
   });
 
   test('Cancelar geração de O.S. volta à viatura e não reabre',async({page})=>{
-    await page.goto('/#/ordens?vehicle=v4');
+    await page.goto('/app.html#/ordens?vehicle=v4');
     await stable(page);
     await expect(page.getByRole('heading',{name:'Gerar OES'})).toBeVisible();
     await page.getByRole('button',{name:'Cancelar'}).click();
-    await expect(page).toHaveURL(/#\/viaturas\/v4$/);
+    await expect(page).toHaveURL(/app\.html#\/viaturas\/v4$/);
     await expect(page.getByRole('heading',{name:'Gerar OES'})).toHaveCount(0);
   });
 
   test('Cancelar Manutenção Rápida volta à viatura e não reabre',async({page})=>{
-    await page.goto('/#/manutencao-rapida?vehicle=v5');
+    await page.goto('/app.html#/manutencao-rapida?vehicle=v5');
     await stable(page);
     await expect(page.getByRole('heading',{name:'Manutenção Rápida'}).last()).toBeVisible();
     await page.getByRole('button',{name:'Cancelar'}).click();
-    await expect(page).toHaveURL(/#\/viaturas\/v5$/);
+    await expect(page).toHaveURL(/app\.html#\/viaturas\/v5$/);
   });
 
   test('QR do patrulheiro não exige KM final e libera campos por necessidade',async({page})=>{
-    await page.goto('/#/patrulha/token-v1');
+    await page.goto('/app.html#/patrulha/token-v1');
     await stable(page);
     await expect(page.getByText('I-52100')).toBeVisible();
     await expect(page.getByText(/KM final/i)).toHaveCount(0);
@@ -175,7 +175,7 @@ test.describe('SIGFROTA sem Firebase real',()=>{
 
   for(const route of routes){
     test('responsividade sem scroll lateral: '+route,async({page})=>{
-      await page.goto('/#'+route);
+      await page.goto('/app.html#'+route);
       await stable(page);
       await expectNoHorizontalOverflow(page,route);
     });
@@ -192,7 +192,7 @@ test.describe('SIGFROTA sem Firebase real',()=>{
     };
     for(const [role,labels] of Object.entries(expectations)){
       await context.clearCookies();
-      await page.goto('/');
+      await page.goto('/app.html#/');
       await page.evaluate((role)=>localStorage.setItem('sigfrota:setup-role',role),role);
       await page.reload();
       await stable(page);
