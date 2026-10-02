@@ -9,7 +9,7 @@ on:
       - '.github/workflows/android-apk.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apk:
@@ -37,8 +37,29 @@ jobs:
       - name: Build debug APK
         run: gradle -p android assembleDebug
 
+      - name: Prepare APK for browser
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/SIGFROTA-TESTE.apk
+
+      - name: Publish APK in repository
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p public
+          cp /tmp/SIGFROTA-TESTE.apk public/SIGFROTA-TESTE.apk
+          git add public/SIGFROTA-TESTE.apk
+          if git diff --cached --quiet; then
+            echo "APK already published."
+          else
+            git commit -m "Publicar APK SIGFROTA para instalação [skip ci]"
+            git push origin HEAD:main
+          fi
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: SIGFROTA-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: /tmp/SIGFROTA-TESTE.apk
