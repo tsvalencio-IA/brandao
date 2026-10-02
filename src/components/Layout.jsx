@@ -94,6 +94,7 @@ export default function Layout() {
             <span>{location.pathname === '/' ? 'Visão geral' : 'Gestão operacional'}</span>
           </div>
           <IntegrationNotifications/>
+          {!setupMode && <button className="mobile-top-logout" onClick={logout} title="Sair do SIGFROTA"><LogOut size={17}/><span>Sair</span></button>}
           {setupMode && (
             <div className="setup-role">
               <Settings2 size={14}/>

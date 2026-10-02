@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useCollection } from '../hooks/useCollection';
 import { money } from '../lib/format';
 import { EmptyState, PageHeader, Stat } from '../components/ui';
-import { canAccessRoute } from '../lib/permissions';
+import { canAccessRoute, vehicleScopeFilter } from '../lib/permissions';
 
 export default function Dashboard() {
   const { user, userRole } = useAuth();
@@ -18,18 +18,18 @@ export default function Dashboard() {
   const canFinance = ['/uge','/relatorios-uge'].some(path => canAccessRoute(userRole, path, user));
   const canParts = ['/estoque','/manutencao-rapida'].some(path => canAccessRoute(userRole, path, user));
 
-  const scoped = userRole === 'adm_opm' && user?.unit;
+  const scopeFilters = vehicleScopeFilter(user,'unit');
+  const scoped = Object.keys(scopeFilters).length > 0;
 
-  const vehicles = useCollection('vehicles', scoped ? {filters:{unit:user.unit},enabled:canVehicles} : {orderBy:'created_at',direction:'desc',enabled:canVehicles});
-  const downs = useCollection('vehicleDowns', scoped ? {filters:{unit:user.unit},enabled:canDowns} : {orderBy:'created_at',direction:'desc',enabled:canDowns});
-  const orders = useCollection('maintenanceOrders', scoped ? {filters:{unit:user.unit},enabled:canOrders} : {orderBy:'created_at',direction:'desc',enabled:canOrders});
+  const vehicles = useCollection('vehicles', scoped ? {filters:scopeFilters,enabled:canVehicles} : {orderBy:'created_at',direction:'desc',enabled:canVehicles});
+  const downs = useCollection('vehicleDowns', scoped ? {filters:scopeFilters,enabled:canDowns} : {orderBy:'created_at',direction:'desc',enabled:canDowns});
+  const orders = useCollection('maintenanceOrders', scoped ? {filters:scopeFilters,enabled:canOrders} : {orderBy:'created_at',direction:'desc',enabled:canOrders});
   const flows = useCollection('financialFlows', { orderBy: 'created_at', direction: 'desc', enabled: canFinance });
   const parts = useCollection('parts', { orderBy: 'name', direction: 'asc', enabled: canParts });
 
   const filteredVehicles = useMemo(() => {
-    if (userRole === 'adm_opm' && user?.unit) return vehicles.data.filter(v => v.unit === user.unit);
-    return vehicles.data;
-  }, [vehicles.data, userRole, user?.unit]);
+    return vehicles.data.filter(v=>v.deleted!==true);
+  }, [vehicles.data]);
 
   const content = useMemo(() => {
     const v = filteredVehicles;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { canViewVehicleUnit, vehicleScopeFilter } from '../lib/permissions';
 import { useCollection } from '../hooks/useCollection';
 import { registerVehicleDown } from '../services/workflows';
 import { logAudit } from '../services/audit';
@@ -11,12 +12,13 @@ import { Button, Card, EmptyState, Field, Input, PageHeader, Select, Textarea } 
 
 export default function RegisterBaixa(){
   const {user,userRole}=useAuth();
-  const vehicleQuery=userRole==='adm_opm'&&user?.unit?{filters:{unit:user.unit}}:{orderBy:'prefix',direction:'asc'};
+  const scopeFilters=vehicleScopeFilter(user,'unit');
+  const vehicleQuery=Object.keys(scopeFilters).length?{filters:scopeFilters}:{orderBy:'prefix',direction:'asc'};
   const {data:vehicles}=useCollection('vehicles',vehicleQuery);
   const [params]=useSearchParams(); const navigate=useNavigate();
   const [vehicleId,setVehicleId]=useState(params.get('vehicle')||'');
   const [form,setForm]=useState({km:'',defect_description:'',defect_category:'',priority:'media',tow_required:false,observations:'',attachments:[]});
-  const list=useMemo(()=>vehicles.filter(v=>v.ativo!==false&&v.status==='OPERANDO'&&(userRole!=='adm_opm'||!user?.unit||v.unit===user.unit)),[vehicles,userRole,user?.unit]);
+  const list=useMemo(()=>vehicles.filter(v=>v.deleted!==true&&v.ativo!==false&&v.status==='OPERANDO'&&canViewVehicleUnit(user,v.unit)),[vehicles,user]);
   const vehicle=vehicles.find(v=>v.id===vehicleId);
 
   useEffect(()=>{if(vehicle&&!form.km)setForm(f=>({...f,km:String(vehicle.km_horimeter||'')}));},[vehicleId]);

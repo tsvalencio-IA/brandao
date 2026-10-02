@@ -21,6 +21,7 @@ const setupUser = (role) => ({
   active: true,
   status_usuario: 'ATIVO',
   unit: '',
+  vehicle_scope: role === 'gestor' ? 'all' : 'unit',
   workshop_id: '',
 });
 
@@ -71,6 +72,7 @@ const pendingProfile = (fbUser) => ({
   posto_graduacao: '',
   re: '',
   nome_guerra: '',
+  vehicle_scope: 'unit',
   active: false,
   status_usuario: 'PENDENTE',
   approval_status: 'PENDENTE',
@@ -84,6 +86,7 @@ const bootstrapProfile = (fbUser) => ({
   email: fbUser.email || '',
   name: fbUser.displayName || fbUser.email || '',
   role: 'gestor',
+  vehicle_scope: 'all',
   active: true,
   status_usuario: 'ATIVO',
   approval_status: 'APROVADO',

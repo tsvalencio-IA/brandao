@@ -13,12 +13,12 @@ const pct=(v)=>Number(v||0).toLocaleString('pt-BR',{style:'percent',minimumFract
 
 function CompositionRow({kind,item}){
   return <tr className={kind==='part'?'composition-part':'composition-service'}>
-    <td><strong>{kind==='part'?'PEÇA':'SERVIÇO'}</strong>{item.code&&<><br/><span className="muted">CÓD.: {item.code}</span></>}{item.table_code&&item.table_code!==item.code&&<><br/><span className="muted">CÓD. TABELA: {item.table_code}</span></>}</td>
-    <td>{text(item.description)}{kind==='service'&&item.system&&<><br/><span className="muted">{item.system}</span></>}</td>
-    <td>{kind==='part'?Number(item.quantity||0).toLocaleString('pt-BR',{maximumFractionDigits:4}):Number(item.hours||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})}</td>
-    <td>{money(item.unit_value||0)}</td>
-    <td>{pct(item.discount_rate||0)}<br/><span className="muted">{money(item.discount_value||0)}</span></td>
-    <td><strong>{money(item.total||0)}</strong></td>
+    <td data-label="Item / Código"><strong>{kind==='part'?'PEÇA':'SERVIÇO'}</strong>{item.code&&<><br/><span className="muted">CÓD.: {item.code}</span></>}{item.table_code&&item.table_code!==item.code&&<><br/><span className="muted">CÓD. TABELA: {item.table_code}</span></>}</td>
+    <td data-label="Descrição">{text(item.description)}{kind==='service'&&item.system&&<><br/><span className="muted">{item.system}</span></>}</td>
+    <td data-label="Qtd / H">{kind==='part'?Number(item.quantity||0).toLocaleString('pt-BR',{maximumFractionDigits:4}):Number(item.hours||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})}</td>
+    <td data-label="Unit. / R$/H">{money(item.unit_value||0)}</td>
+    <td data-label="Desconto">{pct(item.discount_rate||0)}<br/><span className="muted">{money(item.discount_value||0)}</span></td>
+    <td data-label="Total"><strong>{money(item.total||0)}</strong></td>
   </tr>;
 }
 
@@ -89,10 +89,10 @@ export default function Saas2OrderDetail(){
         <div className="detail-item"><span>Unidade</span><strong>{text(official.unit)}</strong></div><div className="detail-item"><span>CNPJ</span><strong>{text(official.cnpj)}</strong></div><div className="detail-item"><span>Endereço</span><strong>{text(official.address)}</strong></div><div className="detail-item"><span>Fiscal do contrato</span><strong>{text(official.fiscal)}</strong></div>
       </div></div>
 
-      <div className="sheet-section"><h3>COMPOSIÇÃO DA O.S. POR PEÇA E SERVIÇO VINCULADO</h3><div className="table-wrap"><table className="data-table composition-table"><thead><tr><th>ITEM / CÓDIGO</th><th>DESCRIÇÃO</th><th>QTD / H</th><th>UNIT. / R$/H</th><th>DESC.</th><th>TOTAL</th></tr></thead><tbody>
+      <div className="sheet-section"><h3>COMPOSIÇÃO DA O.S. POR PEÇA E SERVIÇO VINCULADO</h3><div className="table-wrap responsive-table composition-responsive"><table className="data-table composition-table"><thead><tr><th>ITEM / CÓDIGO</th><th>DESCRIÇÃO</th><th>QTD / H</th><th>UNIT. / R$/H</th><th>DESC.</th><th>TOTAL</th></tr></thead><tbody>
         {groups.map((g,gi)=><FragmentGroup key={'g-'+gi} group={g}/>)}
         {loose.map((s,i)=><CompositionRow key={'l-'+i} kind="service" item={s}/>) }
-      </tbody><tfoot><tr><td colSpan="5"><strong>TOTAL DA O.S.</strong></td><td><strong>{money(t.grand_total||0)}</strong></td></tr></tfoot></table></div></div>
+      </tbody><tfoot><tr><td className="composition-total-label" colSpan="5"><strong>TOTAL DA O.S.</strong></td><td data-label="Total da O.S."><strong>{money(t.grand_total||0)}</strong></td></tr></tfoot></table></div></div>
     </Card>
 
     <h2 className="section-title"><Camera size={15}/> Fotos e vídeos</h2>

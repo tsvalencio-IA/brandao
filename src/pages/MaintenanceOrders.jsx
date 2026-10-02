@@ -4,7 +4,7 @@ import { ClipboardList, Plus, Search } from 'lucide-react';
 import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
 import { useAuth } from '../auth/AuthContext';
-import { can } from '../lib/permissions';
+import { can, vehicleScopeFilter } from '../lib/permissions';
 import { nextOesNumber } from '../services/workflows';
 import { logAudit } from '../services/audit';
 import StatusBadge from '../components/StatusBadge';
@@ -13,17 +13,17 @@ import { dateBR, money } from '../lib/format';
 
 export default function MaintenanceOrders(){
   const {user,userRole}=useAuth();
-  const scoped=userRole==='adm_opm'&&user?.unit;
-  const orders=useCollection('maintenanceOrders',scoped?{filters:{unit:user.unit}}:{orderBy:'created_at',direction:'desc'});
-  const vehicles=useCollection('vehicles',scoped?{filters:{unit:user.unit}}:{orderBy:'prefix',direction:'asc'});
+  const scopeFilters=vehicleScopeFilter(user,'unit');
+  const scoped=Object.keys(scopeFilters).length>0;
+  const orders=useCollection('maintenanceOrders',scoped?{filters:scopeFilters}:{orderBy:'created_at',direction:'desc'});
+  const vehicles=useCollection('vehicles',scoped?{filters:scopeFilters}:{orderBy:'prefix',direction:'asc'});
   const workshops=useCollection('workshops',{orderBy:'name',direction:'asc'});
   const [search,setSearch]=useState('');
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState({vehicle_id:'',workshop_id:'',priority:'media',services_requested:'',observations:''});
 
-  const eligible=vehicles.data.filter(v=>['CHECKLIST_CONCLUIDO','AGUARDANDO_ORCAMENTO','AGUARDANDO_CHECKLIST'].includes(v.status));
+  const eligible=vehicles.data.filter(v=>v.deleted!==true&&['CHECKLIST_CONCLUIDO','AGUARDANDO_ORCAMENTO','AGUARDANDO_CHECKLIST'].includes(v.status));
   const filtered=useMemo(()=>orders.data.filter(o=>{
-    if(userRole==='adm_opm' && user?.unit && o.unit!==user.unit) return false;
     if(userRole==='oficina' && user?.workshop_id && o.workshop_id!==user.workshop_id) return false;
     const q=search.toLowerCase();
     return !q||[o.oes_number,o.vehicle_prefix,o.vehicle_plate,o.workshop_name,o.defect_description].some(x=>String(x||'').toLowerCase().includes(q));

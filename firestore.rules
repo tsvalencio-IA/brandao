@@ -51,6 +51,7 @@ service cloud.firestore {
     }
 
     function canManageUsers() { return fullAccess() || hasPermission('gerenciar_usuarios'); }
+    function canManageVehicleRegistry() { return fullAccess() || roleIn(['gestor','adm','mecanico']) || hasPermission('gerenciar_viaturas'); }
     function canRegisterDown() { return fullAccess() || roleIn(['gestor','adm','adm_opm','mecanico']) || hasPermission('registrar_baixa'); }
     function canDiagnose() { return fullAccess() || roleIn(['gestor','mecanico']) || hasPermission('diagnostico'); }
     function canChecklist() { return fullAccess() || roleIn(['gestor','mecanico']) || hasPermission('checklist'); }
@@ -65,7 +66,9 @@ service cloud.firestore {
 
     function needsVehicleRead() {
       return fullAccess() ||
-        roleIn(['gestor','adm','mecanico']) ||
+        roleIn(['gestor','adm','adm_opm','mecanico']) ||
+        hasPermission('visualizar_viaturas') ||
+        hasPermission('gerenciar_viaturas') ||
         hasPermission('registrar_baixa') ||
         hasPermission('diagnostico') ||
         hasPermission('checklist') ||
@@ -75,12 +78,45 @@ service cloud.firestore {
         hasPermission('inativar_viatura');
     }
 
+    // O escopo de viaturas é independente dos poderes. Um usuário pode ter
+    // acesso total de funções e ainda ficar restrito à própria OPM/unidade.
+    function profileHasVehicleScope() {
+      return profile().keys().hasAny(['vehicle_scope']);
+    }
+
+    function profileHasUnit() {
+      return profile().keys().hasAny(['unit']) && profile().unit != '';
+    }
+
+    function unitScopeEnabled() {
+      return activeUser() && !bootstrapAdmin() && profile().role != 'gestor' && (
+        (profileHasVehicleScope() && profile().vehicle_scope == 'unit') ||
+        (!profileHasVehicleScope() && profile().role == 'adm_opm')
+      );
+    }
+
     function unitMatchesResource() {
-      return profile().role != 'adm_opm' || profile().unit == null || profile().unit == '' || resource.data.unit == profile().unit;
+      return !unitScopeEnabled() || (
+        profileHasUnit() && resource.data.unit == profile().unit
+      );
     }
 
     function unitMatchesRequest() {
-      return profile().role != 'adm_opm' || profile().unit == null || profile().unit == '' || request.resource.data.unit == profile().unit;
+      return !unitScopeEnabled() || (
+        profileHasUnit() && request.resource.data.unit == profile().unit
+      );
+    }
+
+    function vehicleUnitMatchesResource() {
+      return !unitScopeEnabled() || (
+        profileHasUnit() && resource.data.vehicle_unit == profile().unit
+      );
+    }
+
+    function vehicleUnitMatchesRequest() {
+      return !unitScopeEnabled() || (
+        profileHasUnit() && request.resource.data.vehicle_unit == profile().unit
+      );
     }
 
     function validPendingSelfRegistration(uid) {
@@ -114,49 +150,53 @@ service cloud.firestore {
 
     match /public_vehicle_tokens/{token} {
       allow get: if true;
-      allow list: if fullAccess();
-      allow create, update, delete: if fullAccess() || roleIn(['gestor','adm','mecanico']) || hasPermission('corrigir_operacional');
+      allow list: if activeUser() && canManageVehicleRegistry() && unitMatchesResource();
+      allow create: if activeUser() && canManageVehicleRegistry() && unitMatchesRequest();
+      allow update: if activeUser() && canManageVehicleRegistry() && unitMatchesResource() && unitMatchesRequest();
+      allow delete: if activeUser() && canManageVehicleRegistry() && unitMatchesResource();
     }
 
     match /vehicles/{id} {
-      allow read: if activeUser() && needsVehicleRead() && (fullAccess() || unitMatchesResource());
-      allow create: if fullAccess() || roleIn(['gestor','adm','mecanico']);
-      allow update: if activeUser() && (fullAccess() || canRegisterDown() || canDiagnose() || canChecklist() || canOES() || canQuickMaintenance() || hasPermission('inativar_viatura')) && (fullAccess() || unitMatchesResource());
-      allow delete: if fullAccess();
+      allow read: if activeUser() && needsVehicleRead() && unitMatchesResource();
+      allow create: if activeUser() && canManageVehicleRegistry() && unitMatchesRequest();
+      allow update: if activeUser() && (
+        canManageVehicleRegistry() || canRegisterDown() || canDiagnose() || canChecklist() || canOES() || canQuickMaintenance() || hasPermission('inativar_viatura')
+      ) && unitMatchesResource() && unitMatchesRequest();
+      allow delete: if activeUser() && canManageVehicleRegistry() && unitMatchesResource();
     }
 
     match /vehicle_downs/{id} {
-      allow read: if activeUser() && (fullAccess() || canRegisterDown() || canDiagnose() || canChecklist() || canOES()) && (fullAccess() || unitMatchesResource());
-      allow create: if activeUser() && canRegisterDown() && (fullAccess() || unitMatchesRequest());
-      allow update: if activeUser() && (fullAccess() || canRegisterDown() || canDiagnose()) && (fullAccess() || unitMatchesResource());
-      allow delete: if fullAccess();
+      allow read: if activeUser() && (fullAccess() || canRegisterDown() || canDiagnose() || canChecklist() || canOES()) && unitMatchesResource();
+      allow create: if activeUser() && canRegisterDown() && unitMatchesRequest();
+      allow update: if activeUser() && (fullAccess() || canRegisterDown() || canDiagnose()) && unitMatchesResource() && unitMatchesRequest();
+      allow delete: if activeUser() && fullAccess() && unitMatchesResource();
     }
 
     match /diagnoses/{id} {
-      allow read: if activeUser() && (fullAccess() || canDiagnose() || canChecklist() || canOES()) && (fullAccess() || unitMatchesResource());
-      allow create: if activeUser() && canDiagnose() && (fullAccess() || unitMatchesRequest());
-      allow update: if activeUser() && canDiagnose() && (fullAccess() || unitMatchesResource());
-      allow delete: if fullAccess();
+      allow read: if activeUser() && (fullAccess() || canDiagnose() || canChecklist() || canOES()) && unitMatchesResource();
+      allow create: if activeUser() && canDiagnose() && unitMatchesRequest();
+      allow update: if activeUser() && canDiagnose() && unitMatchesResource() && unitMatchesRequest();
+      allow delete: if activeUser() && fullAccess() && unitMatchesResource();
     }
 
     match /checklists/{id} {
-      allow read: if activeUser() && (fullAccess() || canChecklist() || canOES() || canApproveBudget()) && (fullAccess() || unitMatchesResource());
-      allow create: if activeUser() && canChecklist() && (fullAccess() || unitMatchesRequest());
-      allow update: if activeUser() && canChecklist() && (fullAccess() || unitMatchesResource());
-      allow delete: if fullAccess();
+      allow read: if activeUser() && (fullAccess() || canChecklist() || canOES() || canApproveBudget()) && unitMatchesResource();
+      allow create: if activeUser() && canChecklist() && unitMatchesRequest();
+      allow update: if activeUser() && canChecklist() && unitMatchesResource() && unitMatchesRequest();
+      allow delete: if activeUser() && fullAccess() && unitMatchesResource();
     }
 
     match /maintenance_orders/{id} {
       allow read: if activeUser() && (
         fullAccess() || canOES() || canApproveBudget() || canUGE() ||
         (profile().role == 'oficina' && resource.data.workshop_id == profile().workshop_id)
-      ) && (fullAccess() || profile().role != 'adm_opm' || resource.data.unit == profile().unit);
-      allow create: if activeUser() && canOES() && (fullAccess() || unitMatchesRequest());
+      ) && unitMatchesResource();
+      allow create: if activeUser() && canOES() && unitMatchesRequest();
       allow update: if activeUser() && (
         fullAccess() || canOES() || canApproveBudget() || canUGE() ||
         (profile().role == 'oficina' && resource.data.workshop_id == profile().workshop_id)
-      ) && (fullAccess() || profile().role != 'adm_opm' || resource.data.unit == profile().unit);
-      allow delete: if fullAccess();
+      ) && unitMatchesResource() && unitMatchesRequest();
+      allow delete: if activeUser() && fullAccess() && unitMatchesResource();
     }
 
     match /budgets/{id} {
@@ -203,20 +243,24 @@ service cloud.firestore {
     }
 
     match /quick_maintenances/{id} {
-      allow read, create, update: if activeUser() && canQuickMaintenance();
-      allow delete: if fullAccess();
+      allow read: if activeUser() && canQuickMaintenance() && vehicleUnitMatchesResource();
+      allow create: if activeUser() && canQuickMaintenance() && vehicleUnitMatchesRequest();
+      allow update: if activeUser() && canQuickMaintenance() && vehicleUnitMatchesResource() && vehicleUnitMatchesRequest();
+      allow delete: if activeUser() && fullAccess() && vehicleUnitMatchesResource();
     }
 
     match /operational_logs/{id} {
-      allow create: if activeUser() && canOperationalControl() || (
+      allow create: if (
+        activeUser() && canOperationalControl() && vehicleUnitMatchesRequest()
+      ) || (
         request.resource.data.public_token is string &&
         exists(/databases/$(database)/documents/public_vehicle_tokens/$(request.resource.data.public_token)) &&
         get(/databases/$(database)/documents/public_vehicle_tokens/$(request.resource.data.public_token)).data.active == true &&
         request.resource.data.vehicle_id == get(/databases/$(database)/documents/public_vehicle_tokens/$(request.resource.data.public_token)).data.vehicle_id
       );
-      allow read: if activeUser() && canOperationalControl() && (fullAccess() || profile().role != 'adm_opm' || resource.data.vehicle_unit == profile().unit);
-      allow update: if activeUser() && canOperationalControl();
-      allow delete: if fullAccess();
+      allow read: if activeUser() && canOperationalControl() && vehicleUnitMatchesResource();
+      allow update: if activeUser() && canOperationalControl() && vehicleUnitMatchesResource() && vehicleUnitMatchesRequest();
+      allow delete: if activeUser() && fullAccess() && vehicleUnitMatchesResource();
     }
 
     match /financial_flows/{id} {

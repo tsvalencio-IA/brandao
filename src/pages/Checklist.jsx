@@ -4,16 +4,18 @@ import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
 import { CHECKLIST_SECTIONS } from '../data/schema';
 import { useAuth } from '../auth/AuthContext';
+import { vehicleScopeFilter } from '../lib/permissions';
 import { logAudit } from '../services/audit';
 import AttachmentField from '../components/AttachmentField';
 import { Button, Card, EmptyState, Field, Input, Modal, PageHeader, Select, Textarea } from '../components/ui';
 
 export default function Checklist(){
   const {user,userRole}=useAuth();
-  const scoped=userRole==='adm_opm'&&user?.unit;
-  const vehicles=useCollection('vehicles',scoped?{filters:{unit:user.unit}}:{orderBy:'prefix',direction:'asc'});
-  const checklists=useCollection('checklists',scoped?{filters:{unit:user.unit}}:{orderBy:'created_at',direction:'desc'});
-  const eligible=vehicles.data.filter(v=>['AGUARDANDO_CHECKLIST','CHECKLIST_CONCLUIDO'].includes(v.status));
+  const scopeFilters=vehicleScopeFilter(user,'unit');
+  const scoped=Object.keys(scopeFilters).length>0;
+  const vehicles=useCollection('vehicles',scoped?{filters:scopeFilters}:{orderBy:'prefix',direction:'asc'});
+  const checklists=useCollection('checklists',scoped?{filters:scopeFilters}:{orderBy:'created_at',direction:'desc'});
+  const eligible=vehicles.data.filter(v=>v.deleted!==true&&['AGUARDANDO_CHECKLIST','CHECKLIST_CONCLUIDO'].includes(v.status));
   const [selected,setSelected]=useState(null);
   const initialItems=Object.fromEntries(CHECKLIST_SECTIONS.map(x=>[x,{status:'OK',observation:''}]));
   const [items,setItems]=useState(initialItems);

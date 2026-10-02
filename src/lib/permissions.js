@@ -19,6 +19,8 @@ export const ROLE_LABELS = {
 export const SPECIAL_PERMISSIONS = {
   ACESSO_TOTAL: 'acesso_total',
   GERENCIAR_USUARIOS: 'gerenciar_usuarios',
+  VISUALIZAR_VIATURAS: 'visualizar_viaturas',
+  GERENCIAR_VIATURAS: 'gerenciar_viaturas',
   REGISTRAR_BAIXA: 'registrar_baixa',
   DIAGNOSTICO: 'diagnostico',
   CHECKLIST: 'checklist',
@@ -32,9 +34,10 @@ export const SPECIAL_PERMISSIONS = {
   ACESSAR_AUDITORIA: 'acessar_auditoria',
   INATIVAR_VIATURA: 'inativar_viatura',
   APROVAR_PAGAMENTO: 'aprovar_pagamento',
-  INTEGRAR_SAAS2: 'integrar_saas2',
 };
 
+// Compatibilidade: quem já tinha as 14 permissões antigas continua sendo tratado
+// como acesso total, sem precisar recadastrar as novas permissões adicionadas agora.
 export const LEGACY_FULL_ACCESS_PERMISSIONS = [
   'gerenciar_usuarios',
   'registrar_baixa',
@@ -55,6 +58,8 @@ export const LEGACY_FULL_ACCESS_PERMISSIONS = [
 export const SPECIAL_PERMISSION_LABELS = {
   acesso_total: 'ACESSO TOTAL — todos os módulos e ações',
   gerenciar_usuarios: 'Cadastrar usuários e definir permissões',
+  visualizar_viaturas: 'Visualizar viaturas',
+  gerenciar_viaturas: 'Cadastrar, editar e excluir viaturas',
   registrar_baixa: 'Registrar baixa de viatura',
   diagnostico: 'Realizar diagnóstico técnico',
   checklist: 'Preencher e retificar checklist',
@@ -68,7 +73,6 @@ export const SPECIAL_PERMISSION_LABELS = {
   acessar_auditoria: 'Visualizar auditoria',
   inativar_viatura: 'Inativar viatura',
   aprovar_pagamento: 'Aprovar/registrar pagamento',
-  integrar_saas2: 'Sincronizar e conversar com SAAS-2',
 };
 
 export const STATUS_LABELS = {
@@ -126,7 +130,6 @@ export function hasFullAccess(user) {
   return list.includes(SPECIAL_PERMISSIONS.ACESSO_TOTAL) || hasLegacyFullAccess(user);
 }
 
-
 export function hasAnyPermission(user) {
   return Array.isArray(user?.permissoes_especiais) && user.permissoes_especiais.length > 0;
 }
@@ -146,6 +149,29 @@ export function hasSpecialPermission(user, permission) {
   return Array.isArray(user.permissoes_especiais) && user.permissoes_especiais.includes(permission);
 }
 
+// O escopo de viaturas é independente das permissões de função.
+// Um usuário pode ter muitas ações liberadas e ainda assim enxergar somente a própria OPM.
+export function getVehicleScopeMode(user) {
+  if (!user) return 'unit';
+  if (user.role === 'gestor') return 'all';
+  if (user.vehicle_scope === 'all') return 'all';
+  if (user.vehicle_scope === 'unit') return 'unit';
+  // Compatibilidade com usuários antigos: ADM OPM já era limitado por unidade.
+  if (user.role === 'adm_opm' && user.unit) return 'unit';
+  return 'all';
+}
+
+export function vehicleScopeFilter(user, field = 'unit') {
+  if (getVehicleScopeMode(user) !== 'unit') return {};
+  return { [field]: user?.unit || '__SIGFROTA_SEM_UNIDADE__' };
+}
+
+export function canViewVehicleUnit(user, unit) {
+  const mode = getVehicleScopeMode(user);
+  if (mode === 'all') return true;
+  return Boolean(user?.unit) && String(unit || '') === String(user.unit || '');
+}
+
 export function canAccessRoute(role, pathname, user = null) {
   if (!user) return false;
   if (hasFullAccess(user)) return true;
@@ -163,6 +189,7 @@ export function canAccessRoute(role, pathname, user = null) {
   if (allowed.some((base) => pathname === base || (base !== '/' && pathname.startsWith(base + '/')))) return true;
 
   const permissionByRoute = [
+    ['/viaturas', SPECIAL_PERMISSIONS.VISUALIZAR_VIATURAS],
     ['/registrar-baixa', SPECIAL_PERMISSIONS.REGISTRAR_BAIXA],
     ['/diagnostico', SPECIAL_PERMISSIONS.DIAGNOSTICO],
     ['/checklist', SPECIAL_PERMISSIONS.CHECKLIST],
@@ -186,7 +213,8 @@ export function canAccessRoute(role, pathname, user = null) {
 export const can = {
   manageUsers: (r, u) => hasFullAccess(u) || r === 'gestor' || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERENCIAR_USUARIOS),
   viewAudit: (r, u) => hasFullAccess(u) || r === 'gestor' || hasSpecialPermission(u, SPECIAL_PERMISSIONS.ACESSAR_AUDITORIA),
-  manageVehicles: (r, u) => hasFullAccess(u) || ['gestor', 'adm', 'mecanico'].includes(r),
+  viewVehicles: (r, u) => hasFullAccess(u) || ['gestor', 'adm', 'adm_opm', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.VISUALIZAR_VIATURAS),
+  manageVehicles: (r, u) => hasFullAccess(u) || ['gestor', 'adm', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.GERENCIAR_VIATURAS),
   registerDown: (r, u) => hasFullAccess(u) || ['gestor', 'adm', 'adm_opm', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.REGISTRAR_BAIXA),
   diagnosis: (r, u) => hasFullAccess(u) || ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.DIAGNOSTICO),
   checklist: (r, u) => hasFullAccess(u) || ['gestor', 'mecanico'].includes(r) || hasSpecialPermission(u, SPECIAL_PERMISSIONS.CHECKLIST),

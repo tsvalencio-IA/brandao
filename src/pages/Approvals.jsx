@@ -3,6 +3,7 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
 import { useAuth } from '../auth/AuthContext';
+import { vehicleScopeFilter } from '../lib/permissions';
 import { createFinancialFlow } from '../services/workflows';
 import { logAudit } from '../services/audit';
 import { money } from '../lib/format';
@@ -10,7 +11,9 @@ import { Button, Card, EmptyState, Field, Modal, PageHeader, Textarea } from '..
 
 export default function Approvals(){
   const {user,userRole}=useAuth();
-  const orders=useCollection('maintenanceOrders',{filters:{status:'AGUARDANDO_APROVACAO'},orderBy:'created_at',direction:'desc'});
+  const unitFilters=vehicleScopeFilter(user,'unit');
+  const scoped=Object.keys(unitFilters).length>0;
+  const orders=useCollection('maintenanceOrders',scoped?{filters:{status:'AGUARDANDO_APROVACAO',...unitFilters}}:{filters:{status:'AGUARDANDO_APROVACAO'},orderBy:'created_at',direction:'desc'});
   const budgets=useCollection('budgets',{orderBy:'created_at',direction:'desc'});
   const [selected,setSelected]=useState(null); const [decision,setDecision]=useState(''); const [justification,setJustification]=useState('');
   const decide=async()=>{

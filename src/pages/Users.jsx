@@ -5,14 +5,14 @@ import { entities } from '../data/repository';
 import { createFirebaseUser } from '../services/userAdmin';
 import { logAudit } from '../services/audit';
 import { useAuth } from '../auth/AuthContext';
-import { ROLE_LABELS, SPECIAL_PERMISSION_LABELS, SPECIAL_PERMISSIONS, hasFullAccess, can } from '../lib/permissions';
+import { ROLE_LABELS, SPECIAL_PERMISSION_LABELS, SPECIAL_PERMISSIONS, hasFullAccess, getVehicleScopeMode, can } from '../lib/permissions';
 import { dateTimeBR } from '../lib/format';
 import { Button, EmptyState, Field, Input, Modal, PageHeader, Select } from '../components/ui';
 
 const blank = {
   email:'', password:'', name:'', role:'adm_opm', unit:'',
   workshop_id:'', workshop_name:'', job_function:'', posto_graduacao:'',
-  re:'', nome_guerra:'', active:true, permissoes_especiais:[],
+  re:'', nome_guerra:'', active:true, permissoes_especiais:[], vehicle_scope:'unit',
 };
 
 const isOnline = (presence) => {
@@ -50,6 +50,7 @@ export default function Users(){
       unit:u.unit||'', workshop_id:u.workshop_id||'', workshop_name:u.workshop_name||'',
       job_function:u.job_function||'', posto_graduacao:u.posto_graduacao||'', re:u.re||'',
       nome_guerra:u.nome_guerra||'', active:nextMode==='approve' ? true : u.active!==false,
+      vehicle_scope:u.role==='gestor'?'all':(u.vehicle_scope || (u.role==='adm_opm'&&u.unit?'unit':'all')),
       permissoes_especiais:hasFullAccess(u) ? [SPECIAL_PERMISSIONS.ACESSO_TOTAL] : (Array.isArray(u.permissoes_especiais)?u.permissoes_especiais:[]),
     });
     setOpen(true);
@@ -85,6 +86,7 @@ export default function Users(){
     status_usuario:form.active?'ATIVO':'INATIVO',
     approval_status:form.active?'APROVADO':'BLOQUEADO',
     permissoes_especiais:form.permissoes_especiais,
+    vehicle_scope:form.role==='gestor'?'all':form.vehicle_scope,
     deleted:false,
   });
 
@@ -93,8 +95,9 @@ export default function Users(){
     if(!allowed) return;
     setBusy(true); setError('');
     try {
+      if(form.role!=='gestor' && form.vehicle_scope==='unit' && !form.unit.trim()) throw new Error('Informe a Unidade (OPM) para limitar as viaturas deste usuário.');
       if(editing){
-        const before={role:editing.role,status_usuario:editing.status_usuario,active:editing.active,permissoes_especiais:editing.permissoes_especiais||[]};
+        const before={role:editing.role,status_usuario:editing.status_usuario,active:editing.active,unit:editing.unit||'',vehicle_scope:editing.vehicle_scope||'',permissoes_especiais:editing.permissoes_especiais||[]};
         const after=payload();
         await entities.users.update(editing.id,after);
         await logAudit({
@@ -180,18 +183,19 @@ export default function Users(){
 
     {!showDeleted ? (
       normalUsers.length===0 ? <EmptyState icon={UsersIcon} title="Nenhum usuário cadastrado" text="Usuários que fizerem login aparecerão automaticamente aqui como pendentes."/> :
-      <div className="table-wrap"><table className="data-table"><thead><tr>
-        <th>Usuário</th><th>Perfil</th><th>OPM / Oficina</th><th>Poderes</th><th>Conexão</th><th>Status</th><th></th>
+      <div className="table-wrap responsive-table"><table className="data-table"><thead><tr>
+        <th>Usuário</th><th>Perfil</th><th>OPM / Oficina</th><th>Escopo viaturas</th><th>Poderes</th><th>Conexão</th><th>Status</th><th></th>
       </tr></thead><tbody>{normalUsers.map(u=>{
         const online=u.id===currentUser?.uid ? true : isOnline(u); const pending=u.status_usuario==='PENDENTE'||!u.role;
         return <tr key={u.id}>
-          <td><strong>{u.nome_guerra||u.name||u.email||'—'}</strong><br/><span className="muted">{u.email||'—'}</span></td>
-          <td>{pending?<span className="badge warning">AGUARDANDO PERFIL</span>:(ROLE_LABELS[u.role]||u.role)}</td>
-          <td>{u.unit||u.workshop_name||'—'}</td>
-          <td>{hasFullAccess(u)?<span className="badge success">ACESSO TOTAL</span>:(u.permissoes_especiais?.length?u.permissoes_especiais.length+' liberado(s)':'Nenhum extra')}</td>
-          <td><span className={'presence '+(online?'online':'offline')}><i/>{online?'Online':'Offline'}</span>{u.last_seen&&<div className="muted small">{dateTimeBR(u.last_seen)}</div>}</td>
-          <td>{pending?<span className="badge warning">PENDENTE</span>:u.active===false?<span className="badge danger">INATIVO</span>:<span className="badge success">ATIVO</span>}</td>
-          <td><div className="record-actions">
+          <td data-label="Usuário"><strong>{u.nome_guerra||u.name||u.email||'—'}</strong><br/><span className="muted">{u.email||'—'}</span></td>
+          <td data-label="Perfil">{pending?<span className="badge warning">AGUARDANDO PERFIL</span>:(ROLE_LABELS[u.role]||u.role)}</td>
+          <td data-label="OPM / Oficina">{u.unit||u.workshop_name||'—'}</td>
+          <td data-label="Escopo viaturas">{getVehicleScopeMode(u)==='all'?<span className="badge neutral">TODAS</span>:<span className="badge purple">SÓ {u.unit||'UNIDADE'}</span>}</td>
+          <td data-label="Poderes">{hasFullAccess(u)?<span className="badge success">ACESSO TOTAL</span>:(u.permissoes_especiais?.length?u.permissoes_especiais.length+' liberado(s)':'Nenhum extra')}</td>
+          <td data-label="Conexão"><span className={'presence '+(online?'online':'offline')}><i/>{online?'Online':'Offline'}</span>{u.last_seen&&<div className="muted small">{dateTimeBR(u.last_seen)}</div>}</td>
+          <td data-label="Status">{pending?<span className="badge warning">PENDENTE</span>:u.active===false?<span className="badge danger">INATIVO</span>:<span className="badge success">ATIVO</span>}</td>
+          <td data-label="Ações"><div className="record-actions">
             {pending?<Button variant="success" onClick={()=>startEdit(u,'approve')}><UserCheck size={13}/>Liberar</Button>:<Button variant="outline" onClick={()=>startEdit(u)}><Pencil size={13}/>Editar</Button>}
             {!pending&&<Button variant={u.active===false?'success':'warning'} onClick={()=>toggle(u)}>{u.active===false?'Ativar':'Inativar'}</Button>}
             <Button variant="danger" onClick={()=>removeUser(u)}><Trash2 size={13}/>Excluir</Button>
@@ -200,8 +204,8 @@ export default function Users(){
       })}</tbody></table></div>
     ) : (
       deletedUsers.length===0 ? <EmptyState icon={Trash2} title="Nenhum usuário excluído"/> :
-      <div className="table-wrap"><table className="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Excluído em</th><th></th></tr></thead><tbody>
-        {deletedUsers.map(u=><tr key={u.id}><td>{u.nome_guerra||u.name||u.email||'—'}</td><td>{u.email||'—'}</td><td>{dateTimeBR(u.deleted_at)}</td><td><Button variant="outline" onClick={()=>restoreUser(u)}><RotateCcw size={13}/>Restaurar como pendente</Button></td></tr>)}
+      <div className="table-wrap responsive-table"><table className="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Excluído em</th><th></th></tr></thead><tbody>
+        {deletedUsers.map(u=><tr key={u.id}><td data-label="Usuário">{u.nome_guerra||u.name||u.email||'—'}</td><td data-label="E-mail">{u.email||'—'}</td><td data-label="Excluído em">{dateTimeBR(u.deleted_at)}</td><td data-label="Ações"><Button variant="outline" onClick={()=>restoreUser(u)}><RotateCcw size={13}/>Restaurar como pendente</Button></td></tr>)}
       </tbody></table></div>
     )}
 
@@ -216,7 +220,8 @@ export default function Users(){
           {!editing&&<Field label="Senha inicial" required hint="Mínimo de 6 caracteres."><Input type="password" required value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></Field>}
           <Field label="Nome"><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></Field>
           <Field label="Perfil principal" required><Select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}>{Object.entries(ROLE_LABELS).map(([v,l])=><option key={v} value={v}>{l}</option>)}</Select></Field>
-          <Field label="Unidade (OPM)"><Input value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})}/></Field>
+          <Field label="Unidade (OPM)" hint="Ex.: 52.º BPM/I - 2.ª CIA. O texto deve corresponder à unidade cadastrada na viatura."><Input value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})}/></Field>
+          <Field label="Visualização das viaturas" hint="Este limite é independente dos poderes liberados."><Select value={form.role==='gestor'?'all':form.vehicle_scope} disabled={form.role==='gestor'} onChange={e=>setForm({...form,vehicle_scope:e.target.value})}><option value="unit">Somente viaturas da Unidade (OPM) acima</option><option value="all">Todas as viaturas</option></Select></Field>
           <Field label="ID da oficina"><Input value={form.workshop_id} onChange={e=>setForm({...form,workshop_id:e.target.value})}/></Field>
           <Field label="Nome da oficina"><Input value={form.workshop_name} onChange={e=>setForm({...form,workshop_name:e.target.value})}/></Field>
           <Field label="Função"><Input value={form.job_function} onChange={e=>setForm({...form,job_function:e.target.value})}/></Field>
@@ -229,7 +234,7 @@ export default function Users(){
           <div className="config-note" style={{marginBottom:8}}>Você pode liberar somente 1 ação. Acesso total não é obrigatório para o usuário entrar no SIGFROTA.</div>
           {form.permissoes_especiais.includes(SPECIAL_PERMISSIONS.ACESSO_TOTAL)&&
             <div className="success-box" style={{marginBottom:8}}>
-              Acesso total ativo: este usuário poderá acessar todos os módulos e executar todas as ações do SIGFROTA, independentemente do perfil principal.
+              Acesso total de funções ativo. O escopo de viaturas definido acima continua valendo para usuários que não sejam Gestor.
             </div>}
           <div className="permission-grid">
             {permissions.map(([value,label])=><label className={'permission-option '+(value===SPECIAL_PERMISSIONS.ACESSO_TOTAL?'permission-total':'')} key={value}>

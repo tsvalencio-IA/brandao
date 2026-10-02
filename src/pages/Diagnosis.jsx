@@ -3,13 +3,15 @@ import { Stethoscope } from 'lucide-react';
 import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
 import { useAuth } from '../auth/AuthContext';
+import { vehicleScopeFilter } from '../lib/permissions';
 import { logAudit } from '../services/audit';
 import { Button, Card, EmptyState, Field, Modal, PageHeader, Select, Textarea } from '../components/ui';
 import { dateBR } from '../lib/format';
 
 export default function Diagnosis(){
   const {user,userRole}=useAuth();
-  const downQuery=userRole==='adm_opm'&&user?.unit?{filters:{unit:user.unit}}:{orderBy:'created_at',direction:'desc'};
+  const scopeFilters=vehicleScopeFilter(user,'unit');
+  const downQuery=Object.keys(scopeFilters).length?{filters:scopeFilters}:{orderBy:'created_at',direction:'desc'};
   const downs=useCollection('vehicleDowns',downQuery);
   const [selected,setSelected]=useState(null);
   const [form,setForm]=useState({technical_diagnosis:'',probable_cause:'',priority:'media',external_workshop:true,observations:''});
