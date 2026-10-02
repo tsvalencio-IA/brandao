@@ -164,3 +164,19 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
   .install-app-button{display:none!important}
 }
 
+
+
+/* Revisao mobile institucional 02-10-2026 */
+.app-footer{font-size:13px;font-weight:650;color:#647184;padding:18px 16px 20px}
+@media(max-width:900px){
+  .topbar{min-height:60px;padding:8px 12px;gap:8px}
+  .topbar-context{overflow:hidden}
+  .topbar-context strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+@media(max-width:620px){
+  .topbar{min-height:58px;padding:7px 9px;gap:5px}
+  .menu-button,.integration-bell,.mobile-top-logout{width:42px;min-width:42px;height:42px;min-height:42px}
+  .topbar-context strong{font-size:13px;letter-spacing:.06em}
+  .app-footer{font-size:12px;font-weight:650;padding:16px 12px 18px;line-height:1.45}
+}
+
