@@ -168,7 +168,7 @@ service cloud.firestore {
     match /vehicle_downs/{id} {
       allow read: if activeUser() && (fullAccess() || canRegisterDown() || canDiagnose() || canChecklist() || canOES()) && unitMatchesResource();
       allow create: if activeUser() && canRegisterDown() && unitMatchesRequest();
-      allow update: if activeUser() && (fullAccess() || canRegisterDown() || canDiagnose()) && unitMatchesResource() && unitMatchesRequest();
+      allow update: if activeUser() && (fullAccess() || canRegisterDown() || canDiagnose() || canChecklist() || canOES()) && unitMatchesResource() && unitMatchesRequest();
       allow delete: if activeUser() && fullAccess() && unitMatchesResource();
     }
 
