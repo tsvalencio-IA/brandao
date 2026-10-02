@@ -84,7 +84,11 @@ export default function Checklist(){
     });
 
     if(activeDown){
-      await entities.vehicleDowns.update(activeDown.id,{status:'CHECKLIST_CONCLUIDO',checklist_id:row.id});
+      try{
+        await entities.vehicleDowns.update(activeDown.id,{status:'CHECKLIST_CONCLUIDO',checklist_id:row.id});
+      }catch(error){
+        console.warn('Checklist concluído; vínculo da baixa aguardando regras atualizadas.',error);
+      }
     }
 
     await entities.vehicles.update(selected.id,{
