@@ -26,6 +26,7 @@ export async function registerVehicleDown({ vehicle, payload, actor }) {
   await entities.vehicles.update(vehicle.id, {
     status: 'AGUARDANDO_DIAGNOSTICO',
     km_horimeter: Number(payload.km || vehicle.km_horimeter || 0),
+    active_down_id: down.id,
   });
   return down;
 }
