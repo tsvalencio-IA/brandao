@@ -105,7 +105,11 @@ export default function MaintenanceOrders(){
     });
 
     if(down){
-      await entities.vehicleDowns.update(down.id,{status:'OES_GERADA',maintenance_order_id:row.id});
+      try{
+        await entities.vehicleDowns.update(down.id,{status:'OES_GERADA',maintenance_order_id:row.id});
+      }catch(error){
+        console.warn('O.S. gerada; vínculo da baixa aguardando regras atualizadas.',error);
+      }
     }
 
     await entities.vehicles.update(v.id,{
