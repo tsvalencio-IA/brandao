@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Clock3, MessageCircle, Send, FileText } from 'lucide-react';
 import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
 import { useAuth } from '../auth/AuthContext';
+import { logAudit } from '../services/audit';
 import { Button, Card, EmptyState, Input, PageHeader } from '../components/ui';
 import { dateTimeBR, money } from '../lib/format';
 
@@ -39,19 +40,32 @@ export default function Saas2OrderDetail(){
   const loose=order?.composition?.loose_services||[];
   const media=order?.media||[];
   const messages=useMemo(()=>[...chat.data].sort((a,b)=>(a.ts||0)-(b.ts||0)),[chat.data]);
+
+  useEffect(()=>{
+    const reader=user?.nome_guerra||user?.name||user?.displayName||user?.email||'SIGFROTA';
+    chat.data.filter(m=>m.sender==='jarvis'&&m.read_sigfrota!==true).forEach(m=>{
+      entities.saas2Chat.update(m.id,{read_sigfrota:true,read_sigfrota_at:new Date().toISOString(),read_sigfrota_by:reader}).catch(()=>{});
+    });
+  },[chat.data,user]);
+
   const timeline=useMemo(()=>{
-    const own=(order?.timeline||[]).map((e,i)=>({id:'os-'+i,at:e.at,by:e.by,action:e.action,type:'os'}));
-    const sync=events.data.filter(e=>e.event_type!=='CHAT_MESSAGE').map(e=>({id:'sync-'+e.id,at:e.created_at||e.ts,by:'SAAS-2',action:e.message||'Atualização recebida.',type:'sync'}));
-    return [...own,...sync].sort((a,b)=>new Date(b.at||0)-new Date(a.at||0));
-  },[order,events.data]);
+    const own=(order?.timeline||[]).map((e,i)=>({id:'os-'+i,at:e.at||e.data||e.ts,by:e.by||e.usuario||'SAAS-2',action:e.action||e.acao||'Atualização',type:'os'}));
+    const sync=events.data.filter(e=>e.event_type!=='CHAT_MESSAGE').map(e=>({id:'sync-'+e.id,at:e.created_at||e.ts,by:e.sender_name||(e.sender==='sigfrota'?'SIGFROTA':'SAAS-2'),action:e.message||'Atualização recebida.',type:'sync'}));
+    const chatRows=messages.map(m=>({id:'chat-'+m.id,at:m.created_at||m.ts,by:m.sender_name||(m.sender==='sigfrota'?'SIGFROTA':'Jarvis'),action:'Mensagem: '+(m.text||''),type:'chat'}));
+    return [...own,...sync,...chatRows].sort((a,b)=>new Date(b.at||0)-new Date(a.at||0));
+  },[order,events.data,messages]);
 
   const send=async(e)=>{
     e.preventDefault();const msg=message.trim();if(!msg||!integration||!order)return;
     setSending(true);
     try{
       const now=new Date().toISOString();
-      await entities.saas2Chat.create({integration_id:id,order_id:orderId,order_number:order.number||'',tenant_id:integration.tenant_id||'',client_id:integration.official_client_id||'',workshop_name:office.name||'',official_client_name:official.name||'',sender:'sigfrota',sender_name:user?.nome_guerra||user?.name||user?.displayName||user?.email||'SIGFROTA',sender_uid:user?.uid||'',text:msg,ts:Date.now(),created_at:now,read_sigfrota:true,read_jarvis:false});
-      await entities.saas2SyncEvents.create({integration_id:id,order_id:orderId,order_number:order.number||'',event_type:'CHAT_MESSAGE',tenant_id:integration.tenant_id||'',official_client_id:integration.official_client_id||'',official_client_name:official.name||'',workshop_name:office.name||'',message:'Nova mensagem na O.S. '+(order.number||''),created_at:now,ts:Date.now(),sender:'sigfrota'});
+      const ts=Date.now();
+      const senderName=user?.nome_guerra||user?.name||user?.displayName||user?.email||'SIGFROTA';
+      const senderRole=user?.role||'';
+      const chatDoc=await entities.saas2Chat.create({integration_id:id,order_id:orderId,order_number:order.number||'',tenant_id:integration.tenant_id||'',client_id:integration.official_client_id||'',workshop_name:office.name||'',official_client_name:official.name||'',sender:'sigfrota',sender_name:senderName,sender_role:senderRole,sender_uid:user?.uid||'',sender_email:user?.email||'',text:msg,ts,created_at:now,read_sigfrota:true,read_jarvis:false});
+      const eventDoc=await entities.saas2SyncEvents.create({integration_id:id,order_id:orderId,order_number:order.number||'',event_type:'CHAT_MESSAGE',tenant_id:integration.tenant_id||'',official_client_id:integration.official_client_id||'',official_client_name:official.name||'',workshop_name:office.name||'',message:'Nova mensagem na O.S. '+(order.number||''),message_text:msg,created_at:now,ts,sender:'sigfrota',sender_name:senderName,sender_role:senderRole,sender_uid:user?.uid||'',sender_email:user?.email||'',chat_id:chatDoc.id});
+      await logAudit({user,role:senderRole,action:'MENSAGEM_SIGFROTA_ENVIADA',entity:'SAAS2Order',recordId:orderId,after:{integration_id:id,order_number:order.number||'',chat_id:chatDoc.id,event_id:eventDoc.id},context:{message:msg,source:'SIGFROTA'}});
       setMessage('');
     }finally{setSending(false)}
   };
@@ -88,7 +102,7 @@ export default function Saas2OrderDetail(){
     {timeline.length===0?<EmptyState icon={Clock3} title="Nenhuma atualização registrada"/>:<div className="timeline">{timeline.map(e=><div className="timeline-item" key={e.id}><strong>{e.action}</strong><p>{dateTimeBR(e.at)} • {e.by||'Sistema'}</p></div>)}</div>}
 
     <h2 className="section-title"><MessageCircle size={15}/> Chat da O.S.</h2>
-    <Card className="bridge-chat-card"><div className="bridge-chat-messages">{messages.length===0?<div className="integration-event-empty">Nenhuma mensagem ainda.</div>:messages.map(m=><div key={m.id} className={'bridge-chat-msg '+(m.sender==='sigfrota'?'mine':'theirs')}><div><strong>{m.sender_name||(m.sender==='sigfrota'?'SIGFROTA':'Jarvis')}</strong><span>{dateTimeBR(m.created_at||m.ts)}</span></div><p>{m.text}</p></div>)}</div><form className="bridge-chat-form" onSubmit={send}><Input placeholder="Mensagem para o Jarvis..." value={message} onChange={e=>setMessage(e.target.value)}/><Button type="submit" disabled={sending||!message.trim()}><Send size={14}/>{sending?'Enviando...':'Enviar'}</Button></form></Card>
+    <Card className="bridge-chat-card"><div className="bridge-chat-messages">{messages.length===0?<div className="integration-event-empty">Nenhuma mensagem ainda.</div>:messages.map(m=><div key={m.id} className={'bridge-chat-msg '+(m.sender==='sigfrota'?'mine':'theirs')}><div><strong>{m.sender_name||(m.sender==='sigfrota'?'SIGFROTA':'Jarvis')}</strong><span>{dateTimeBR(m.created_at||m.ts)}{m.sender==='sigfrota'&&m.read_jarvis?' • ✓ lida':''}</span></div><p>{m.text}</p></div>)}</div><form className="bridge-chat-form" onSubmit={send}><Input placeholder="Mensagem para o Jarvis..." value={message} onChange={e=>setMessage(e.target.value)}/><Button type="submit" disabled={sending||!message.trim()}><Send size={14}/>{sending?'Enviando...':'Enviar'}</Button></form></Card>
 
     {mediaOpen&&<div className="media-lightbox" onClick={()=>setMediaOpen(null)}><button onClick={()=>setMediaOpen(null)}>×</button><img src={mediaOpen.url} alt="Visualização"/></div>}
   </div>;

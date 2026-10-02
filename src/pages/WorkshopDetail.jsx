@@ -14,8 +14,8 @@ export default function WorkshopDetail(){
   const workshop=useEntity('workshops',id);
   const integrations=useCollection('saas2Integrations',{filters:{integration_id:id}});
   const integration=integrations.data[0]||null;
-  const orders=useMemo(()=>[...(integration?.orders||[])].sort((a,b)=>String(b.synced_at||'').localeCompare(String(a.synced_at||''))),[integration]);
-  const vehicles=integration?.vehicles||[];
+  const orders=useMemo(()=>[...(integration?.orders||[])].filter(o=>o?.manual_sync===true).sort((a,b)=>String(b.synced_at||'').localeCompare(String(a.synced_at||''))),[integration]);
+  const vehicles=useMemo(()=>{const map=new Map();orders.forEach(o=>{const v=o?.vehicle;if(v?.id)map.set(String(v.id),v)});return [...map.values()]},[orders]);
   const official=integration?.official_client||{};
   const office=integration?.saas2_workshop||{};
   const photoCount=orders.reduce((s,o)=>s+(Array.isArray(o.media)?o.media.length:0),0);

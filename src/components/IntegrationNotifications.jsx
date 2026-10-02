@@ -45,7 +45,7 @@ export default function IntegrationNotifications(){
     {open&&<div className="integration-dropdown"><div className="integration-dropdown-head"><strong>Atualizações</strong><button onClick={markRead}>Marcar como lidas</button></div><div className="integration-event-list">
       {rows.length===0?<div className="integration-event-empty">Nenhuma atualização recebida.</div>:rows.slice(0,15).map(event=><button key={event.id} className={'integration-event '+(Number(event.ts||0)>lastRead?'unread':'')} onClick={()=>openEvent(event)}>
         <div className="integration-event-icon">{event.event_type==='CHAT_MESSAGE'?<MessageCircle size={15}/>:<RefreshCw size={15}/>}</div>
-        <div><strong>{label(event)}</strong><span>{event.message||event.order_number||'O.S.'}</span><small>{dateTimeBR(event.created_at||event.ts)}</small></div>
+        <div><strong>{label(event)}</strong><span>{event.sender_name?event.sender_name+' • ':''}{event.message||event.order_number||'O.S.'}</span><small>{dateTimeBR(event.created_at||event.ts)}</small></div>
       </button>)}
     </div></div>}
     {popup&&<div className="integration-live-popup"><div className="integration-live-icon">{popup.event_type==='CHAT_MESSAGE'?<MessageCircle size={18}/>:<RefreshCw size={18}/>}</div><div><strong>{label(popup)}</strong><p>{popup.message||popup.order_number||'Nova atualização recebida.'}</p><button onClick={()=>openEvent(popup)}>Abrir</button></div><button className="integration-live-close" onClick={()=>setPopup(null)}><X size={15}/></button></div>}
