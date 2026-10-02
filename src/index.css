@@ -124,3 +124,36 @@
   .vehicle-down-head{align-items:flex-start}.vehicle-down-media,.down-media-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 10px 10px}
   .vehicle-down-media-item img,.down-media-item img,.vehicle-down-media-item video{height:105px}
 }
+
+
+/* Ajustes institucionais 02-10-2026 */
+html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
+.app-footer{font-size:11px;font-weight:600;color:#6f7b8b;padding:16px 18px 18px;line-height:1.4}
+.login-shell .app-footer{font-size:10px;color:rgba(255,255,255,.72)}
+.install-app-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 11px;border:1px solid #d8dee7;background:#fff;color:#24364f;border-radius:9px;font-size:10px;font-weight:800;white-space:nowrap}
+.install-app-button:hover{background:#f6f8fb}
+.install-app-button.compact{margin-left:auto}
+.maintenance-step.current{border-color:#d4ad45;background:#fff9e8;box-shadow:0 0 0 2px rgba(212,173,69,.08)}
+.maintenance-step.current .maintenance-step-icon{background:#f7e9b7;color:#7c5b0d}
+.maintenance-step.current span{color:#8b6515;font-weight:800}
+.public-shell{width:100%;max-width:100%;overflow-x:hidden}
+.public-card{max-width:850px;width:100%}
+@media(max-width:900px){
+  .install-app-button.compact{margin-left:0}
+}
+@media(max-width:620px){
+  .app-footer{font-size:10px;padding:14px 12px 16px}
+  .install-app-button{min-width:44px;width:44px;padding:0}
+  .install-app-button span{display:none}
+  .topbar{width:100%;max-width:100%;overflow:visible}
+  .public-shell{padding:6px}
+  .public-card{border-radius:14px}
+  .public-brand{gap:8px}
+  .public-brand strong{font-size:13px}
+  .public-vehicle{padding:11px 12px}
+  .public-vehicle strong{font-size:18px}
+  .public-event-box{padding:10px}
+  .event-toggle{min-height:46px}
+  .maintenance-flow{grid-template-columns:1fr 1fr}
+}
+
