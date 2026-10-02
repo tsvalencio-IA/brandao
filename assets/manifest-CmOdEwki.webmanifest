@@ -1,0 +1,19 @@
+{
+  "name": "SIGFROTA PMESP",
+  "short_name": "SIGFROTA",
+  "description": "Sistema Integrado de Gestão de Frota",
+  "start_url": "./#/login",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#071426",
+  "theme_color": "#0f1f38",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./sigfrota-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
