@@ -62,6 +62,7 @@ jobs:
           cp dist/manifest.webmanifest ./manifest.webmanifest
           cp dist/sw.js ./sw.js
           cp dist/sigfrota-icon.svg ./sigfrota-icon.svg
+          if [ -f dist/SIGFROTA-TESTE.apk ]; then cp dist/SIGFROTA-TESTE.apk ./SIGFROTA-TESTE.apk; fi
           touch .nojekyll
 
       - name: Commit compiled site
@@ -71,6 +72,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html 404.html assets manifest.webmanifest sw.js sigfrota-icon.svg .nojekyll
+          if [ -f SIGFROTA-TESTE.apk ]; then git add SIGFROTA-TESTE.apk; fi
 
           if git diff --cached --quiet; then
             echo "Static site already up to date."
