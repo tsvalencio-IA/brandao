@@ -50,9 +50,26 @@ export default function VehicleDetail(){
   const sortedChecklists=useMemo(()=>[...checklists.data].sort(byNewest),[checklists.data]);
   const sortedOrders=useMemo(()=>[...orders.data].sort(byNewest),[orders.data]);
   const latestDown=sortedDowns[0]||null;
-  const latestDiagnosis=sortedDiagnoses[0]||null;
-  const latestChecklist=sortedChecklists[0]||null;
-  const latestOrder=sortedOrders[0]||null;
+  const currentDiagnosis=latestDown ? (
+    sortedDiagnoses.find(d=>String(d.vehicle_down_id||'')===String(latestDown.id)) ||
+    sortedDiagnoses.find(d=>String(d.id||'')===String(latestDown.diagnosis_id||'')) ||
+    null
+  ) : null;
+  const currentChecklist=latestDown ? (
+    sortedChecklists.find(ch=>String(ch.vehicle_down_id||'')===String(latestDown.id)) ||
+    (currentDiagnosis ? sortedChecklists.find(ch=>String(ch.diagnosis_id||'')===String(currentDiagnosis.id)) : null) ||
+    sortedChecklists.find(ch=>String(ch.id||'')===String(latestDown.checklist_id||'')) ||
+    null
+  ) : null;
+  const currentOrder=latestDown ? (
+    sortedOrders.find(o=>String(o.vehicle_down_id||'')===String(latestDown.id)) ||
+    (currentChecklist ? sortedOrders.find(o=>String(o.checklist_id||'')===String(currentChecklist.id)) : null) ||
+    sortedOrders.find(o=>String(o.id||'')===String(latestDown.maintenance_order_id||'')) ||
+    null
+  ) : null;
+  const latestDiagnosis=currentDiagnosis;
+  const latestChecklist=currentChecklist;
+  const latestOrder=currentOrder;
 
   const latestOperationalKm=useMemo(()=>ops.data.reduce((max,x)=>Math.max(max,Number(x.km_initial||0)),0),[ops.data]);
 
@@ -122,12 +139,12 @@ export default function VehicleDetail(){
   const v=vehicle.data;
   const currentKm=Math.max(Number(v.km_horimeter||0),latestOperationalKm);
 
-  const flowKey = latestOrder
+  const flowKey = currentOrder
     ? 'order'
-    : latestChecklist
+    : currentChecklist
       ? 'order_pending'
-      : latestDiagnosis
-        ? 'checklist'
+      : currentDiagnosis
+        ? (currentDiagnosis.external_workshop===false ? 'quick' : 'checklist')
         : latestDown
           ? 'diagnosis'
           : 'down';
@@ -136,16 +153,17 @@ export default function VehicleDetail(){
     if(flowKey==='down'&&can.registerDown(userRole,user)) return <Link to={'/registrar-baixa?vehicle='+v.id}><Button variant="danger"><AlertTriangle size={15}/>Registrar Baixa</Button></Link>;
     if(flowKey==='diagnosis'&&can.diagnosis(userRole,user)) return <Link to={'/diagnostico?vehicle='+v.id}><Button><Stethoscope size={15}/>Fazer Diagnóstico</Button></Link>;
     if(flowKey==='checklist'&&can.checklist(userRole,user)) return <Link to={'/checklist?vehicle='+v.id}><Button><ListChecks size={15}/>Fazer Checklist</Button></Link>;
+    if(flowKey==='quick'&&can.quickMaintenance(userRole,user)) return <Link to={'/manutencao-rapida?vehicle='+v.id}><Button><Wrench size={15}/>Manutenção Rápida</Button></Link>;
     if(flowKey==='order_pending'&&can.createOES(userRole,user)) return <Link to={'/ordens?vehicle='+v.id}><Button><ClipboardList size={15}/>Gerar O.S.</Button></Link>;
-    if(flowKey==='order'&&latestOrder) return <Link to={'/ordens/'+latestOrder.id}><Button variant="outline"><ClipboardList size={15}/>Abrir O.S. atual</Button></Link>;
+    if(flowKey==='order'&&currentOrder) return <Link to={'/ordens/'+currentOrder.id}><Button variant="outline"><ClipboardList size={15}/>Abrir O.S. atual</Button></Link>;
     return null;
   };
 
   const stepState=[
     ['Baixa',!!latestDown,flowKey==='down',AlertTriangle],
-    ['Diagnóstico',!!latestDiagnosis,flowKey==='diagnosis',Stethoscope],
-    ['Checklist',!!latestChecklist,flowKey==='checklist',ListChecks],
-    ['O.S.',!!latestOrder,flowKey==='order_pending',ClipboardList],
+    ['Diagnóstico',!!currentDiagnosis,flowKey==='diagnosis',Stethoscope],
+    [flowKey==='quick'?'Manutenção Rápida':'Checklist',flowKey==='quick'?false:!!currentChecklist,flowKey==='quick'||flowKey==='checklist',flowKey==='quick'?Wrench:ListChecks],
+    ['O.S.',!!currentOrder,flowKey==='order_pending',ClipboardList],
   ];
 
   return <div>
