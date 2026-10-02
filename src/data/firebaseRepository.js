@@ -4,6 +4,31 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
+const isPlainObject = (value) => {
+  if (!value || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
+
+// Firestore rejeita qualquer campo com valor undefined, inclusive dentro de arrays/objetos.
+// Sanitiza somente objetos/arrays comuns e preserva FieldValue (serverTimestamp etc.), Date e outros tipos especiais.
+const sanitizeFirestoreData = (value) => {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeFirestoreData(item))
+      .filter((item) => item !== undefined);
+  }
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .map(([key, item]) => [key, sanitizeFirestoreData(item)])
+        .filter(([, item]) => item !== undefined)
+    );
+  }
+  return value;
+};
+
 const convert = (snap) => {
   const data = snap.data();
   const out = { id: snap.id, ...data };
@@ -38,7 +63,7 @@ export const firebaseRepository = {
     return snap.empty ? null : convert(snap.docs[0]);
   },
   async create(name, data, forcedId = null) {
-    const payload = { ...data, created_at: serverTimestamp(), updated_at: serverTimestamp() };
+    const payload = sanitizeFirestoreData({ ...data, created_at: serverTimestamp(), updated_at: serverTimestamp() });
     if (forcedId) {
       const ref = doc(db, name, forcedId);
       await setDoc(ref, payload, { merge: true });
@@ -48,7 +73,7 @@ export const firebaseRepository = {
     return { id: ref.id, ...data };
   },
   async update(name, id, patch) {
-    await updateDoc(doc(db, name, id), { ...patch, updated_at: serverTimestamp() });
+    await updateDoc(doc(db, name, id), sanitizeFirestoreData({ ...patch, updated_at: serverTimestamp() }));
     return { id, ...patch };
   },
   async remove(name, id) { await deleteDoc(doc(db, name, id)); },
