@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ListChecks } from 'lucide-react';
 import { useCollection } from '../hooks/useCollection';
 import { entities } from '../data/repository';
@@ -13,6 +13,7 @@ import { Button, Card, EmptyState, Field, Input, Modal, PageHeader, Select, Text
 export default function Checklist(){
   const {user,userRole}=useAuth();
   const [params]=useSearchParams();
+  const navigate=useNavigate();
   const scopeFilters=vehicleScopeFilter(user,'unit');
   const scoped=Object.keys(scopeFilters).length>0;
   const vehicles=useCollection('vehicles',scoped?{filters:scopeFilters}:{orderBy:'prefix',direction:'asc'});
@@ -102,7 +103,9 @@ export default function Checklist(){
       entity:'Checklist',recordId:row.id,
       context:{vehicle_id:selected.id,vehicle_down_id:activeDown?.id||null,diagnosis_id:activeDiagnosis?.id||null}
     });
+    const vehicleId=selected.id;
     setSelected(null);
+    navigate('/viaturas/'+vehicleId);
   };
 
   return <div>
