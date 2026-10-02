@@ -15,7 +15,7 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command: 'VITE_SETUP_MODE=true VITE_APP_PUBLIC_URL=http://127.0.0.1:4173 npm run dev -- --host 127.0.0.1 --port 4173',
+    command: 'npm run dev -- --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173',
     timeout: 120_000,
     reuseExistingServer: false,
