@@ -39,7 +39,9 @@ export async function uploadToCloudinary(file, folder = 'sigfrota') {
 
   const data = await response.json();
 
-  return {
+  // Alguns tipos de arquivo não retornam width/height/duration.
+  // Não inclua propriedades undefined porque o Firestore rejeita esse valor.
+  return Object.fromEntries(Object.entries({
     url: data.secure_url,
     public_id: data.public_id,
     resource_type: data.resource_type,
@@ -49,5 +51,5 @@ export async function uploadToCloudinary(file, folder = 'sigfrota') {
     height: data.height,
     duration: data.duration,
     original_filename: data.original_filename,
-  };
+  }).filter(([, value]) => value !== undefined));
 }
