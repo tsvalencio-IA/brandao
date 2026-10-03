@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Car, CheckCircle2, Shield } from 'lucide-react';
 import { entities } from '../data/repository';
+import { DEFECT_CATEGORIES } from '../data/schema';
 import { todayISO } from '../lib/format';
 import AttachmentField from '../components/AttachmentField';
 import Footer from '../components/Footer';
-import { Button, Card, EmptyState, Field, Input, Textarea } from '../components/ui';
+import { Button, Card, EmptyState, Field, Input, Select, Textarea } from '../components/ui';
 
 const emptyEvents = {
   fuel:false,
   oil_change:false,
   oil_filter:false,
   fuel_filter:false,
+  mechanical_issue:false,
 };
 
 export default function PatrolPublic(){
@@ -22,6 +24,7 @@ export default function PatrolPublic(){
   const [form,setForm]=useState({
     rank:'',re:'',war_name:'',km_initial:'',time_start:'',
     fuel_km:'',oil_change_km:'',oil_filter_km:'',fuel_filter_km:'',
+    issue_category:'Outros',issue_description:'',
     observations:'',files:[],declaration:false,events:{...emptyEvents}
   });
 
@@ -35,7 +38,11 @@ export default function PatrolPublic(){
     const enabled=!form.events[key];
     const fieldByEvent={fuel:'fuel_km',oil_change:'oil_change_km',oil_filter:'oil_filter_km',fuel_filter:'fuel_filter_km'};
     const patch={events:{...form.events,[key]:enabled}};
-    if(!enabled) patch[fieldByEvent[key]]='';
+    if(!enabled&&fieldByEvent[key]) patch[fieldByEvent[key]]='';
+    if(key==='mechanical_issue'&&!enabled){
+      patch.issue_category='Outros';
+      patch.issue_description='';
+    }
     setForm({...form,...patch});
   };
 
@@ -49,6 +56,7 @@ export default function PatrolPublic(){
     if(form.events.oil_change) alerts.push('TROCA_OLEO');
     if(form.events.oil_filter) alerts.push('FILTRO_OLEO');
     if(form.events.fuel_filter) alerts.push('FILTRO_COMBUSTIVEL');
+    if(form.events.mechanical_issue) alerts.push('AVARIA_MECANICA');
 
     await entities.operationalLogs.create({
       public_token:token,
@@ -71,6 +79,11 @@ export default function PatrolPublic(){
       oil_filter_km:form.events.oil_filter&&form.oil_filter_km?Number(form.oil_filter_km):null,
       fuel_filter_event:Boolean(form.events.fuel_filter),
       fuel_filter_km:form.events.fuel_filter&&form.fuel_filter_km?Number(form.fuel_filter_km):null,
+      mechanical_issue_event:Boolean(form.events.mechanical_issue),
+      issue_category:form.events.mechanical_issue?form.issue_category:'',
+      issue_description:form.events.mechanical_issue?form.issue_description:'',
+      issue_status:form.events.mechanical_issue?'PENDENTE_ANALISE':'',
+      issue_files:form.events.mechanical_issue?form.files:[],
       observations:form.observations,
       files:form.files,
       alerts
@@ -80,7 +93,9 @@ export default function PatrolPublic(){
 
   if(loading)return <div className="public-shell"><div className="full-loader"><span className="spinner"/></div></div>;
   if(!vehicle)return <div className="public-shell"><EmptyState icon={Shield} title="QR Code inválido ou bloqueado" text="Esta viatura não está disponível para lançamento operacional."/></div>;
-  if(sent)return <div className="public-shell"><Card className="public-card"><div className="empty-icon" style={{background:'#e9f6ee',color:'#247d48'}}><CheckCircle2 size={26}/></div><h2 style={{textAlign:'center'}}>Lançamento enviado</h2><p className="muted small" style={{textAlign:'center'}}>O registro foi gravado. Para correção, procure o Motomec responsável.</p></Card><Footer/></div>;
+  if(sent)return <div className="public-shell"><Card className="public-card"><div className="empty-icon" style={{background:'#e9f6ee',color:'#247d48'}}><CheckCircle2 size={26}/></div><h2 style={{textAlign:'center'}}>Lançamento enviado</h2><p className="muted small" style={{textAlign:'center'}}>O registro foi gravado. Se você relatou uma avaria, ela seguirá para análise do responsável pela viatura.</p></Card><Footer/></div>;
+
+  const needsFiles=form.events.fuel||form.events.oil_change||form.events.oil_filter||form.events.fuel_filter||form.events.mechanical_issue;
 
   return <div className="public-shell">
     <Card className="public-card">
@@ -101,7 +116,13 @@ export default function PatrolPublic(){
 
         <div className="public-event-box">
           <strong>Ocorrências deste lançamento</strong>
-          <span>Marque somente o que realmente aconteceu. Os campos de KM serão liberados conforme a necessidade.</span>
+          <span>Marque somente o que realmente aconteceu. Para problema na viatura, descreva o sintoma e envie fotos sempre que possível.</span>
+
+          <label className="event-toggle"><input type="checkbox" checked={form.events.mechanical_issue} onChange={()=>toggleEvent('mechanical_issue')}/><span>Relatar problema / avaria na viatura</span></label>
+          {form.events.mechanical_issue&&<div className="form-stack" style={{marginTop:8}}>
+            <Field label="Categoria do problema" required><Select required value={form.issue_category} onChange={e=>setForm({...form,issue_category:e.target.value})}>{DEFECT_CATEGORIES.map(x=><option key={x} value={x}>{x}</option>)}</Select></Field>
+            <Field label="O que está acontecendo?" required><Textarea required value={form.issue_description} onChange={e=>setForm({...form,issue_description:e.target.value})} placeholder="Descreva o problema percebido, ruído, falha, luz no painel, avaria ou condição da viatura."/></Field>
+          </div>}
 
           <label className="event-toggle"><input type="checkbox" checked={form.events.fuel} onChange={()=>toggleEvent('fuel')}/><span>Abastecimento</span></label>
           {form.events.fuel&&<Field label="KM do abastecimento" required><Input type="number" required value={form.fuel_km} onChange={e=>setForm({...form,fuel_km:e.target.value})}/></Field>}
@@ -116,16 +137,16 @@ export default function PatrolPublic(){
           {form.events.fuel_filter&&<Field label="KM da troca do filtro de combustível" required><Input type="number" required value={form.fuel_filter_km} onChange={e=>setForm({...form,fuel_filter_km:e.target.value})}/></Field>}
         </div>
 
-        <Field label="Observações"><Textarea value={form.observations} onChange={e=>setForm({...form,observations:e.target.value})}/></Field>
+        <Field label="Observações gerais"><Textarea value={form.observations} onChange={e=>setForm({...form,observations:e.target.value})}/></Field>
 
-        {(form.events.fuel||form.events.oil_change||form.events.oil_filter||form.events.fuel_filter)&&
+        {needsFiles&&
           <div>
-            <div className="field-label">Comprovantes / fotos, se necessário</div>
+            <div className="field-label">Fotos / comprovantes</div>
             <AttachmentField max={10} value={form.files} onChange={files=>setForm({...form,files})}/>
           </div>
         }
 
-        <label className="checkbox-row declaration"><input type="checkbox" checked={form.declaration} onChange={e=>setForm({...form,declaration:e.target.checked})}/> Declaro que as informações inseridas são verdadeiras e estou ciente de que, em caso de erro, deverei procurar o Motomec responsável para correção.</label>
+        <label className="checkbox-row declaration"><input type="checkbox" checked={form.declaration} onChange={e=>setForm({...form,declaration:e.target.checked})}/> Declaro que as informações inseridas são verdadeiras e estou ciente de que, em caso de erro, deverei procurar o responsável pela frota para correção.</label>
         <Button type="submit" disabled={!form.declaration}>Enviar lançamento</Button>
       </form>
     </Card><Footer/>
