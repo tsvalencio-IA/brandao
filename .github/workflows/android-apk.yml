@@ -54,13 +54,14 @@ jobs:
           grep -q 'view.setPadding(bars.left, bars.top, bars.right, bars.bottom)' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'onShowFileChooser' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'android:label="SIG Frotas"' android/app/src/main/AndroidManifest.xml
-          grep -q 'android:icon="@mipmap/ic_sig_frotas_bitmap"' android/app/src/main/AndroidManifest.xml
-          grep -q 'android:roundIcon="@mipmap/ic_sig_frotas_bitmap"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:icon="@mipmap/ic_sig_frotas_launcher"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@mipmap/ic_sig_frotas_launcher"' android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.POST_NOTIFICATIONS' android/app/src/main/AndroidManifest.xml
           grep -q 'FrotasPMAndroid' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'NotificationManager.IMPORTANCE_HIGH' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           test -s android/app/src/main/res/drawable-nodpi/ic_sig_frotas_source.webp
-          test -s android/app/src/main/res/mipmap-nodpi/ic_sig_frotas_bitmap.webp
+          test -s android/app/src/main/res/mipmap-nodpi/ic_sig_frotas_launcher.webp
+          grep -q '@drawable/ic_sig_frotas_foreground' android/app/src/main/res/mipmap-anydpi-v26/ic_sig_frotas_launcher.xml
                     grep -q "image/.*,video/.*,.pdf" src/components/AttachmentField.jsx
           grep -q 'sigfrotaDebugUrl' android/app/build.gradle
           echo "Native APK contract validated."

@@ -219,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title == null || title.isEmpty() ? "Frotas PM" : title)
+            .setContentTitle(title == null || title.isEmpty() ? "SIG Frotas" : title)
             .setContentText(body == null ? "" : body)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body == null ? "" : body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)

@@ -5,8 +5,8 @@
     <application
         android:allowBackup="false"
         android:label="SIG Frotas"
-        android:icon="@mipmap/ic_sig_frotas_bitmap"
-        android:roundIcon="@mipmap/ic_sig_frotas_bitmap"
+        android:icon="@mipmap/ic_sig_frotas_launcher"
+        android:roundIcon="@mipmap/ic_sig_frotas_launcher"
         android:theme="@style/Theme.SIGFROTA"
         android:usesCleartextTraffic="false">
         <activity

@@ -18,7 +18,7 @@ const statusText={
 const nativeNotify=(title,body,route)=>{
   try{
     if(window.FrotasPMAndroid?.notifyUpdate){
-      window.FrotasPMAndroid.notifyUpdate(String(title||'Frotas PM'),String(body||''),String(route||'/'));
+      window.FrotasPMAndroid.notifyUpdate(String(title||'SIG Frotas'),String(body||''),String(route||'/'));
       return true;
     }
   }catch(error){
@@ -26,7 +26,7 @@ const nativeNotify=(title,body,route)=>{
   }
   if('Notification' in window && Notification.permission==='granted'){
     try{
-      const n=new Notification(title||'Frotas PM',{body:body||'',tag:route||undefined});
+      const n=new Notification(title||'SIG Frotas',{body:body||'',tag:route||undefined});
       n.onclick=()=>{window.focus();if(route)window.location.hash='#'+route;n.close();};
       return true;
     }catch{}
