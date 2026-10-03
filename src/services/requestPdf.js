@@ -13,16 +13,31 @@ const dateBR=(value)=>{
 
 const imageAttachment=(item)=>String(item?.type||'').startsWith('image/')||/\.(png|jpe?g|webp)$/i.test(String(item?.url||''));
 
-const toDataUrl=async(url)=>{
+const toPdfImage=async(url)=>{
   const response=await fetch(url,{mode:'cors'});
   if(!response.ok)throw new Error('Não foi possível carregar uma imagem do checklist.');
   const blob=await response.blob();
-  return new Promise((resolve,reject)=>{
-    const reader=new FileReader();
-    reader.onload=()=>resolve(reader.result);
-    reader.onerror=()=>reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
+  const objectUrl=URL.createObjectURL(blob);
+  try{
+    const img=await new Promise((resolve,reject)=>{
+      const element=new Image();
+      element.onload=()=>resolve(element);
+      element.onerror=()=>reject(new Error('Imagem inválida.'));
+      element.src=objectUrl;
+    });
+    const maxSide=1600;
+    const scale=Math.min(1,maxSide/Math.max(img.naturalWidth||1,img.naturalHeight||1));
+    const width=Math.max(1,Math.round((img.naturalWidth||1)*scale));
+    const height=Math.max(1,Math.round((img.naturalHeight||1)*scale));
+    const canvas=document.createElement('canvas');
+    canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,width,height);
+    ctx.drawImage(img,0,0,width,height);
+    return {data:canvas.toDataURL('image/jpeg',0.84),width,height};
+  }finally{
+    URL.revokeObjectURL(objectUrl);
+  }
 };
 
 export async function buildWorkshopRequestPdf({vehicle,down,diagnosis,checklist,order,user}){
@@ -120,11 +135,15 @@ export async function buildWorkshopRequestPdf({vehicle,down,diagnosis,checklist,
     for(let i=0;i<media.length;i++){
       if(col===0)ensure(63);
       try{
-        const data=await toDataUrl(media[i].url);
+        const image=await toPdfImage(media[i].url);
         const x=margin+(col*92);
+        const boxW=85,boxH=48;
+        const ratio=Math.min(boxW/image.width,boxH/image.height);
+        const drawW=image.width*ratio,drawH=image.height*ratio;
+        const drawX=x+1+(boxW-drawW)/2,drawY=y+1+(boxH-drawH)/2;
         doc.setDrawColor(205,213,223);
         doc.rect(x,y,87,55);
-        doc.addImage(data,'JPEG',x+1,y+1,85,48,undefined,'FAST');
+        doc.addImage(image.data,'JPEG',drawX,drawY,drawW,drawH,undefined,'FAST');
         doc.setFontSize(7);doc.setTextColor(83,98,116);
         doc.text(text(media[i].name||media[i].original_filename,'Foto '+(i+1)),x+2,y+53,{maxWidth:82});
       }catch{
