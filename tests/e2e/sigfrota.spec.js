@@ -75,7 +75,27 @@ async function expectNoHorizontalOverflow(page,label='page'){
   expect(Math.max(size.html,size.body),label+' overflow horizontal').toBeLessThanOrEqual(size.viewport+2);
 }
 
+function nextFlowButton(page,name){
+  return page.locator('.flow-next-action').getByRole('button',{name});
+}
+
 test.describe('SIGFROTA sem Firebase real',()=>{
+  test.beforeAll(async({browser})=>{
+    const context=await browser.newContext();
+    try{
+      await seedLocal(context);
+      const page=await context.newPage();
+      await page.goto('/app.html#/');
+      await stable(page);
+      if(await page.getByRole('button',{name:'Entrar'}).count()){
+        throw new Error('AMBIENTE E2E INVÁLIDO: a tela de login apareceu. VITE_SETUP_MODE=true não chegou ao Vite; os fluxos locais não serão executados.');
+      }
+      await expect(page.getByText('Modo de configuração ativo')).toBeVisible();
+    }finally{
+      await context.close();
+    }
+  });
+
   test.beforeEach(async({context})=>{ await seedLocal(context); });
 
   test('ambiente isolado está ativo e não usa tela de login',async({page})=>{
@@ -89,34 +109,34 @@ test.describe('SIGFROTA sem Firebase real',()=>{
     await page.goto('/app.html#/viaturas/v1');
     await stable(page);
     await expect(page.getByRole('heading',{name:'I-52100'})).toBeVisible();
-    await page.getByRole('button',{name:/Registrar Baixa/i}).click();
+    await nextFlowButton(page,/Registrar Baixa/i).click();
 
     await page.getByLabel('Categoria').selectOption({label:'Motor'});
     await page.getByLabel('Descrição do defeito').fill('Falha em teste local');
     await page.getByRole('button',{name:'Registrar Baixa'}).click();
     await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
     await expect(page.getByText('Baixas e fotos')).toBeVisible();
-    await expect(page.getByRole('button',{name:'Fazer Diagnóstico'})).toBeVisible();
+    await expect(nextFlowButton(page,'Fazer Diagnóstico')).toBeVisible();
 
-    await page.getByRole('button',{name:'Fazer Diagnóstico'}).click();
+    await nextFlowButton(page,'Fazer Diagnóstico').click();
     await expect(page.getByRole('heading',{name:'Diagnóstico Técnico'})).toBeVisible();
     await page.getByLabel('Diagnóstico técnico').fill('Diagnóstico de teste local');
     await page.getByRole('button',{name:'Concluir e avançar'}).click();
     await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
-    await expect(page.getByRole('button',{name:'Fazer Checklist'})).toBeVisible();
+    await expect(nextFlowButton(page,'Fazer Checklist')).toBeVisible();
 
-    await page.getByRole('button',{name:'Fazer Checklist'}).click();
+    await nextFlowButton(page,'Fazer Checklist').click();
     await expect(page.getByRole('heading',{name:/Checklist • I-52100/})).toBeVisible();
     await page.getByRole('button',{name:'Concluir checklist'}).click();
     await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
-    await expect(page.getByRole('button',{name:'Gerar O\.S\.'})).toBeVisible();
+    await expect(nextFlowButton(page,'Gerar O.S.')).toBeVisible();
 
-    await page.getByRole('button',{name:'Gerar O.S.'}).click();
+    await nextFlowButton(page,'Gerar O.S.').click();
     await expect(page.getByRole('heading',{name:'Gerar OES'})).toBeVisible();
     await page.getByLabel('Oficina').selectOption('w1');
     await page.getByRole('button',{name:'Gerar OES'}).click();
     await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
-    await expect(page.getByRole('button',{name:/Abrir O\.S\. atual/})).toBeVisible();
+    await expect(nextFlowButton(page,/Abrir O\.S\. atual/)).toBeVisible();
     await expectNoHorizontalOverflow(page,'fluxo final');
   });
 
