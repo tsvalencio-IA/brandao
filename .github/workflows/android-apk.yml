@@ -51,7 +51,7 @@ jobs:
           grep -q 'WindowInsetsCompat.Type.statusBars()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'WindowInsetsCompat.Type.navigationBars()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'WindowInsetsCompat.Type.displayCutout()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
-          grep -q 'root.setPadding' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'view.setPadding(bars.left, bars.top, bars.right, bars.bottom)' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'onShowFileChooser' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'android:icon="@drawable/ic_sigfrota_app"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:roundIcon="@drawable/ic_sigfrota_app"' android/app/src/main/AndroidManifest.xml
