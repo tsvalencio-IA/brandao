@@ -38,12 +38,21 @@ export default function AppNotifications(){
   const {user}=useAuth();
   const ops=useCollection('operationalLogs',{orderBy:'created_at',direction:'desc',limit:100,enabled:Boolean(user)});
   const orders=useCollection('maintenanceOrders',{orderBy:'updated_at',direction:'desc',limit:100,enabled:Boolean(user)});
+  const vehicles=useCollection('vehicles',{orderBy:'updated_at',direction:'desc',limit:500,enabled:Boolean(user)});
   const initialized=useRef(false);
   const opState=useRef(new Map());
   const orderState=useRef(new Map());
 
   useEffect(()=>{
-    if(!user||ops.loading||orders.loading)return;
+    if(!user||ops.loading||orders.loading||vehicles.loading)return;
+
+    const vehicleMap=new Map(vehicles.data.map(v=>[String(v.id),v]));
+    const receivesVehicle=(row)=>{
+      const vehicle=vehicleMap.get(String(row.vehicle_id||''))||null;
+      if(['gestor','adm'].includes(user.role)) return true;
+      if(vehicle?.responsible_user_id) return String(vehicle.responsible_user_id)===String(user.uid);
+      return canViewVehicleUnit(user,row.vehicle_unit||row.unit||vehicle?.unit||'');
+    };
 
     const nextOps=new Map();
     for(const row of ops.data){
@@ -65,7 +74,7 @@ export default function AppNotifications(){
     }
 
     for(const row of ops.data){
-      if(!canViewVehicleUnit(user,row.vehicle_unit||row.unit||''))continue;
+      if(!receivesVehicle(row))continue;
       const previous=opState.current.get(row.id);
       const current=nextOps.get(row.id);
       if(previous===current)continue;
@@ -80,7 +89,7 @@ export default function AppNotifications(){
     }
 
     for(const row of orders.data){
-      if(!canViewVehicleUnit(user,row.unit||''))continue;
+      if(!receivesVehicle(row))continue;
       const previous=orderState.current.get(row.id);
       const current=nextOrders.get(row.id);
       if(previous===current)continue;
@@ -95,7 +104,7 @@ export default function AppNotifications(){
 
     opState.current=nextOps;
     orderState.current=nextOrders;
-  },[user,ops.data,ops.loading,orders.data,orders.loading]);
+  },[user,ops.data,ops.loading,orders.data,orders.loading,vehicles.data,vehicles.loading]);
 
   return null;
 }
