@@ -176,14 +176,25 @@ test.describe('SIGFROTA sem Firebase real',()=>{
     await expect(page).toHaveURL(/app\.html#\/viaturas\/v5$/);
   });
 
-  test('QR do patrulheiro não exige KM final e libera campos por necessidade',async({page})=>{
+  test('QR do patrulheiro não exige KM final e libera todos os campos por necessidade',async({page})=>{
     await page.goto('/app.html#/patrulha/token-v1');
     await stable(page);
     await expect(page.getByText('I-52100')).toBeVisible();
     await expect(page.getByText(/KM final/i)).toHaveCount(0);
     await expect(page.getByLabel('KM atual / inicial')).toBeVisible();
+
     await page.getByText('Abastecimento',{exact:true}).click();
     await expect(page.getByLabel('KM do abastecimento')).toBeVisible();
+
+    await page.getByText('Troca de óleo',{exact:true}).click();
+    await expect(page.getByLabel('KM da troca de óleo')).toBeVisible();
+
+    await page.getByText('Troca do filtro de óleo',{exact:true}).click();
+    await expect(page.getByLabel('KM da troca do filtro de óleo')).toBeVisible();
+
+    await page.getByText('Troca do filtro de combustível',{exact:true}).click();
+    await expect(page.getByLabel('KM da troca do filtro de combustível')).toBeVisible();
+
     await expectNoHorizontalOverflow(page,'QR patrulheiro');
   });
 
@@ -201,6 +212,53 @@ test.describe('SIGFROTA sem Firebase real',()=>{
       await expectNoHorizontalOverflow(page,route);
     });
   }
+
+  const dynamicRoutes=[
+    '/viaturas/v1',
+    '/ordens/inexistente',
+    '/oficinas/w1',
+    '/oficinas/w1/os/inexistente',
+    '/patrulha/token-v1',
+  ];
+
+  for(const route of dynamicRoutes){
+    test('responsividade sem scroll lateral em rota dinâmica: '+route,async({page})=>{
+      await page.goto('/app.html#'+route);
+      await stable(page);
+      await expectNoHorizontalOverflow(page,route);
+    });
+  }
+
+  test('rodapé institucional aparece sem estourar a tela',async({page})=>{
+    await page.goto('/app.html#/');
+    await stable(page);
+    await expect(page.getByText('Powered by Matheus Brandão e thIAguinho Soluções Digitais.')).toBeVisible();
+    await expectNoHorizontalOverflow(page,'rodapé institucional');
+  });
+
+  test('cabeçalho mobile cabe na tela e abre o menu lateral',async({page},testInfo)=>{
+    test.skip(testInfo.project.name==='desktop-chromium','Validação específica de cabeçalho mobile');
+    await page.goto('/app.html#/');
+    await stable(page);
+    await expect(page.locator('.topbar')).toBeVisible();
+    await expect(page.locator('.menu-button')).toBeVisible();
+    await expectNoHorizontalOverflow(page,'cabeçalho mobile');
+    await page.locator('.menu-button').click();
+    await expect(page.locator('.sidebar')).toHaveClass(/sidebar-open/);
+    await expectNoHorizontalOverflow(page,'menu mobile aberto');
+  });
+
+  test('Instalar App não aparece quando o navegador se identifica como APK',async({page,context})=>{
+    await context.addInitScript(()=>{
+      Object.defineProperty(navigator,'userAgent',{
+        configurable:true,
+        get:()=> 'Mozilla/5.0 SIGFROTA-APP',
+      });
+    });
+    await page.goto('/app.html#/');
+    await stable(page);
+    await expect(page.getByText('Instalar App',{exact:true})).toHaveCount(0);
+  });
 
   test('menus essenciais por perfil',async({page,context})=>{
     const expectations={
