@@ -220,6 +220,15 @@ jobs:
           fi
           echo "Launcher screenshot captured for icon verification."
 
+          adb shell input swipe 160 590 160 90 350
+          sleep 3
+          adb shell uiautomator dump /sdcard/sig-frotas-app-drawer.xml
+          adb pull /sdcard/sig-frotas-app-drawer.xml /tmp/sig-frotas-app-drawer.xml
+          adb exec-out screencap -p > /tmp/sig-frotas-app-drawer.png
+          test -s /tmp/sig-frotas-app-drawer.png
+          grep -qi 'SIG Frotas' /tmp/sig-frotas-app-drawer.xml
+          echo "App drawer confirms SIG Frotas launcher entry."
+
       - name: Upload APK smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -237,6 +246,8 @@ jobs:
             /tmp/sigfrota-adb-reverse.txt
             /tmp/sig-frotas-launcher.png
             /tmp/sig-frotas-launcher.xml
+            /tmp/sig-frotas-app-drawer.png
+            /tmp/sig-frotas-app-drawer.xml
           if-no-files-found: ignore
 
       - name: Publish tested APK in repository
