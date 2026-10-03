@@ -12,7 +12,7 @@ import { generateToken, normalizePlate } from '../lib/format';
 import StatusBadge from '../components/StatusBadge';
 import { Button, EmptyState, Field, Input, Modal, PageHeader, Select } from '../components/ui';
 
-const empty = { prefix:'', plate:'', brand:'', model:'', year:'', vehicle_type:'viatura_4rodas', fuel_type:'flex', unit:'', codigo_opm:'', modalidade:'', km_horimeter:'' };
+const empty = { prefix:'', plate:'', brand:'', model:'', year:'', vehicle_type:'viatura_4rodas', fuel_type:'flex', unit:'', codigo_opm:'', modalidade:'', km_horimeter:'', responsible_user_id:'' };
 
 export default function Vehicles() {
   const { user, userRole } = useAuth();
@@ -20,6 +20,7 @@ export default function Vehicles() {
   const scopedToUnit = getVehicleScopeMode(user) === 'unit' && Boolean(user?.unit);
   const vehicleQuery = Object.keys(scopeFilters).length ? {filters:scopeFilters} : {orderBy:'created_at',direction:'desc'};
   const { data, loading } = useCollection('vehicles', vehicleQuery);
+  const users = useCollection('users',{orderBy:'name',direction:'asc'});
   const [search,setSearch]=useState('');
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState(empty);
@@ -42,8 +43,11 @@ export default function Vehicles() {
     e.preventDefault();
     if(!canManage) return;
     const token=generateToken();
+    const responsible=users.data.find(x=>String(x.id)===String(form.responsible_user_id));
     const payload={
       ...form,
+      responsible_user_id:responsible?.id||'',
+      responsible_name:responsible?.nome_guerra||responsible?.name||responsible?.email||'',
       unit:scopedToUnit ? user.unit : form.unit,
       plate:normalizePlate(form.plate),
       year:Number(form.year||0),
@@ -77,7 +81,10 @@ export default function Vehicles() {
         prefix:String(prefix), plate:normalizePlate(plate), brand:r.brand||r.Marca||'', model:r.model||r.Modelo||'',
         year:Number(r.year||r.Ano||0), vehicle_type:r.vehicle_type||'viatura_4rodas', fuel_type:r.fuel_type||'flex',
         unit:rowUnit, codigo_opm:r.codigo_opm||r['Código OPM']||'', modalidade:r.modalidade||r.Modalidade||'',
-        km_horimeter:Number(r.km_horimeter||r.KM||0), status:'OPERANDO', ativo:true, deleted:false, qr_token:token
+        km_horimeter:Number(r.km_horimeter||r.KM||0),
+        responsible_user_id:r.responsible_user_id||r['Responsável UID']||'',
+        responsible_name:r.responsible_name||r['Responsável']||'',
+        status:'OPERANDO', ativo:true, deleted:false, qr_token:token
       });
       await entities.publicVehicleTokens.create({vehicle_id:v.id,prefix:v.prefix,plate:v.plate,unit:v.unit,active:true},token);
       imported++;
@@ -110,6 +117,7 @@ export default function Vehicles() {
         <Field label="Unidade (OPM)" required><Input required disabled={scopedToUnit} value={scopedToUnit?user.unit:form.unit} onChange={e=>setForm({...form,unit:e.target.value})}/></Field>
         <Field label="Código OPM"><Input value={form.codigo_opm} onChange={e=>setForm({...form,codigo_opm:e.target.value})}/></Field>
         <Field label="Modalidade"><Input value={form.modalidade} onChange={e=>setForm({...form,modalidade:e.target.value})}/></Field>
+        <Field label="Responsável pela viatura" hint="Este usuário receberá as atualizações desta viatura no aplicativo."><Select value={form.responsible_user_id} onChange={e=>setForm({...form,responsible_user_id:e.target.value})}><option value="">Sem responsável definido</option>{users.data.filter(u=>u.deleted!==true&&u.active!==false&&(!form.unit||!u.unit||u.unit===form.unit)).map(u=><option key={u.id} value={u.id}>{u.nome_guerra||u.name||u.email} {u.unit?'• '+u.unit:''}</option>)}</Select></Field>
       </div><div className="form-actions"><Button variant="secondary" onClick={()=>setOpen(false)}>Cancelar</Button><Button type="submit">Salvar</Button></div>
     </form></Modal>
   </div>;
