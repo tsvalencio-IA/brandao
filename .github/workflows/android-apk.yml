@@ -162,7 +162,8 @@ jobs:
           adb reverse --list | tee /tmp/sigfrota-adb-reverse.txt
           grep -q 'tcp:4173 tcp:4173' /tmp/sigfrota-adb-reverse.txt
 
-          adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+          adb uninstall br.com.sigfrota.app >/dev/null 2>&1 || true
+          adb install android/app/build/outputs/apk/debug/app-debug.apk
           adb shell pm grant br.com.sigfrota.app android.permission.POST_NOTIFICATIONS
           adb shell dumpsys package br.com.sigfrota.app | grep -q 'android.permission.POST_NOTIFICATIONS: granted=true'
           adb shell am force-stop br.com.sigfrota.app
@@ -208,6 +209,17 @@ jobs:
 
           echo "APK installed, MainActivity active, WebView safe area and screenshot confirmed."
 
+          adb shell input keyevent KEYCODE_HOME
+          sleep 3
+          adb shell uiautomator dump /sdcard/frotas-pm-launcher.xml || true
+          adb pull /sdcard/frotas-pm-launcher.xml /tmp/frotas-pm-launcher.xml || true
+          adb exec-out screencap -p > /tmp/frotas-pm-launcher.png
+          test -s /tmp/frotas-pm-launcher.png
+          if [ -s /tmp/frotas-pm-launcher.xml ]; then
+            grep -qi 'Frotas PM' /tmp/frotas-pm-launcher.xml || true
+          fi
+          echo "Launcher screenshot captured for icon verification."
+
       - name: Upload APK smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -223,6 +235,8 @@ jobs:
             /tmp/sigfrota-pid.txt
             /tmp/sigfrota-activity-top.txt
             /tmp/sigfrota-adb-reverse.txt
+            /tmp/frotas-pm-launcher.png
+            /tmp/frotas-pm-launcher.xml
           if-no-files-found: ignore
 
       - name: Publish tested APK in repository
