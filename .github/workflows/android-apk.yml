@@ -48,7 +48,9 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'SIGFROTA-APP' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
-          grep -q 'WindowInsetsCompat.Type.systemBars()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'WindowInsetsCompat.Type.statusBars()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'WindowInsetsCompat.Type.navigationBars()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'WindowInsetsCompat.Type.displayCutout()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'root.setPadding' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'onShowFileChooser' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'android:icon="@drawable/ic_sigfrota_logo"' android/app/src/main/AndroidManifest.xml
