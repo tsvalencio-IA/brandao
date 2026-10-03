@@ -49,8 +49,11 @@ jobs:
           set -euo pipefail
           grep -q 'SIGFROTA-APP' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'WindowInsetsCompat.Type.systemBars()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'root.setPadding' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'onShowFileChooser' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
-          grep -q 'android:icon="@drawable/ic_sigfrota"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:icon="@drawable/ic_sigfrota_logo"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@drawable/ic_sigfrota_logo"' android/app/src/main/AndroidManifest.xml
+          test -s android/app/src/main/res/drawable-nodpi/ic_sigfrota_logo.jpg
           grep -q "image/.*,video/.*,.pdf" src/components/AttachmentField.jsx
           grep -q 'sigfrotaDebugUrl' android/app/build.gradle
           echo "Native APK contract validated."

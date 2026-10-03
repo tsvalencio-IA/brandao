@@ -3,7 +3,8 @@
     <application
         android:allowBackup="false"
         android:label="SIGFROTA"
-        android:icon="@drawable/ic_sigfrota"
+        android:icon="@drawable/ic_sigfrota_logo"
+        android:roundIcon="@drawable/ic_sigfrota_logo"
         android:theme="@style/Theme.SIGFROTA"
         android:usesCleartextTraffic="false">
         <activity

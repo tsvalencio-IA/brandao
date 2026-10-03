@@ -2,13 +2,17 @@ package br.com.sigfrota.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.ViewGroup;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -18,6 +22,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 public class MainActivity extends AppCompatActivity {
     private WebView webView;
@@ -41,19 +46,40 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Android 15+: o conteúdo pode ocupar a área das barras do sistema.
-        // Mantemos edge-to-edge controlado e aplicamos os insets reais ao WebView.
+        // Android 15+ força edge-to-edge em apps targetSdk 35.
+        // O conteúdo web fica dentro de um container nativo que respeita
+        // integralmente status bar e navigation bar, sem sobrepor botões.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
-        webView = new WebView(this);
-        setContentView(webView);
+        boolean darkMode =
+            (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+        int systemBackground = darkMode ? Color.rgb(15, 31, 56) : Color.WHITE;
 
-        ViewCompat.setOnApplyWindowInsetsListener(webView, (view, windowInsets) -> {
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(systemBackground);
+
+        webView = new WebView(this);
+        root.addView(
+            webView,
+            new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        );
+        setContentView(root);
+
+        WindowInsetsControllerCompat barsController =
+            WindowCompat.getInsetsController(getWindow(), root);
+        barsController.setAppearanceLightStatusBars(!darkMode);
+        barsController.setAppearanceLightNavigationBars(!darkMode);
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, windowInsets) -> {
             Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-            return windowInsets;
+            return WindowInsetsCompat.CONSUMED;
         });
-        ViewCompat.requestApplyInsets(webView);
+        ViewCompat.requestApplyInsets(root);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
