@@ -160,12 +160,27 @@ jobs:
           grep -q 'br.com.sigfrota.app.teste' /tmp/sigfrota-activity-top.txt
           grep -q 'MainActivity' /tmp/sigfrota-activity-top.txt
 
-          adb shell uiautomator dump /sdcard/sigfrota-window.xml || true
-          adb pull /sdcard/sigfrota-window.xml /tmp/sigfrota-window.xml || true
+          adb shell uiautomator dump /sdcard/sigfrota-window.xml
+          adb pull /sdcard/sigfrota-window.xml /tmp/sigfrota-window.xml
           adb exec-out screencap -p > /tmp/sigfrota-apk.png
 
+          test -s /tmp/sigfrota-window.xml
           test -s /tmp/sigfrota-apk.png
-          echo "APK installed, MainActivity active, screenshot captured."
+
+          if grep -qiE 'Webpage not available|ERR_CLEARTEXT_NOT_PERMITTED|net::ERR_' /tmp/sigfrota-window.xml; then
+            echo "WebView error detected inside APK."
+            cat /tmp/sigfrota-window.xml
+            exit 1
+          fi
+
+          if grep -qi 'text="Entrar"' /tmp/sigfrota-window.xml; then
+            echo "Unexpected login screen detected inside isolated APK."
+            cat /tmp/sigfrota-window.xml
+            exit 1
+          fi
+
+          grep -q 'Modo de configuração ativo' /tmp/sigfrota-window.xml
+          echo "APK installed, MainActivity active, isolated SIGFROTA screen confirmed."
 
       - name: Upload APK smoke evidence
         if: always()
