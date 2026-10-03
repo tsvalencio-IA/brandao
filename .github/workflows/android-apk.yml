@@ -15,6 +15,8 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      ANDROID_AVD_HOME: ${{ runner.temp }}/sigfrota-avd
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,22 +89,63 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p "$ANDROID_AVD_HOME"
           sdkmanager "emulator" "system-images;android-35;google_apis;x86_64" >/dev/null
           echo "no" | avdmanager create avd --force --name sigfrota-ci --package "system-images;android-35;google_apis;x86_64"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
+          "$ANDROID_HOME/emulator/emulator" -list-avds | tee /tmp/sigfrota-avds.txt
+          grep -qx 'sigfrota-ci' /tmp/sigfrota-avds.txt
 
       - name: Install and open isolated APK in Android
         shell: bash
         run: |
           set -euo pipefail
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
-          nohup "$ANDROID_HOME/emulator/emulator"             -avd sigfrota-ci             -no-window             -no-audio             -no-boot-anim             -no-snapshot             -gpu swiftshader_indirect             > /tmp/sigfrota-emulator.log 2>&1 &
-          adb wait-for-device
+
+          echo "Using ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
+          "$ANDROID_HOME/emulator/emulator" -list-avds | tee /tmp/sigfrota-avds-before-start.txt
+          grep -qx 'sigfrota-ci' /tmp/sigfrota-avds-before-start.txt
+
+          nohup "$ANDROID_HOME/emulator/emulator" \
+            -avd sigfrota-ci \
+            -no-window \
+            -no-audio \
+            -no-boot-anim \
+            -no-snapshot \
+            -no-metrics \
+            -gpu swiftshader_indirect \
+            > /tmp/sigfrota-emulator.log 2>&1 &
+          EMULATOR_PID=$!
+          echo "$EMULATOR_PID" > /tmp/sigfrota-emulator.pid
+
+          if ! timeout 180 adb wait-for-device; then
+            echo "Emulator did not expose an ADB device within 180 seconds."
+            cat /tmp/sigfrota-emulator.log || true
+            ps -p "$EMULATOR_PID" -f || true
+            exit 1
+          fi
+
+          BOOT_OK=0
           for i in $(seq 1 120); do
+            if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+              echo "Emulator process exited before Android finished booting."
+              cat /tmp/sigfrota-emulator.log || true
+              exit 1
+            fi
             BOOT="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
-            if [ "$BOOT" = "1" ]; then break; fi
+            if [ "$BOOT" = "1" ]; then
+              BOOT_OK=1
+              break
+            fi
             sleep 2
           done
-          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+          if [ "$BOOT_OK" != "1" ]; then
+            echo "Android emulator did not finish booting within 240 seconds."
+            adb devices -l || true
+            cat /tmp/sigfrota-emulator.log || true
+            exit 1
+          fi
 
           adb install -r android/app/build/outputs/apk/debug/app-debug.apk
           adb shell am force-stop br.com.sigfrota.app.teste
