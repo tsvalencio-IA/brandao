@@ -4,9 +4,9 @@
 
     <application
         android:allowBackup="false"
-        android:label="Frotas PM"
-        android:icon="@mipmap/ic_frotas_pm_launcher"
-        android:roundIcon="@mipmap/ic_frotas_pm_launcher"
+        android:label="SIG Frotas"
+        android:icon="@mipmap/ic_sig_frotas_launcher"
+        android:roundIcon="@mipmap/ic_sig_frotas_launcher"
         android:theme="@style/Theme.SIGFROTA"
         android:usesCleartextTraffic="false">
         <activity
