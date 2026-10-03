@@ -160,6 +160,8 @@ jobs:
           grep -q 'tcp:4173 tcp:4173' /tmp/sigfrota-adb-reverse.txt
 
           adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+          adb shell pm grant br.com.sigfrota.app android.permission.POST_NOTIFICATIONS
+          adb shell dumpsys package br.com.sigfrota.app | grep -q 'android.permission.POST_NOTIFICATIONS: granted=true'
           adb shell am force-stop br.com.sigfrota.app
           adb shell am start -W -n br.com.sigfrota.app/br.com.sigfrota.app.MainActivity | tee /tmp/sigfrota-am-start.txt
           sleep 8
