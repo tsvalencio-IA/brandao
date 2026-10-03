@@ -15,8 +15,6 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    env:
-      ANDROID_AVD_HOME: ${{ runner.temp }}/sigfrota-avd
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,6 +87,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/sigfrota-avd"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           mkdir -p "$ANDROID_AVD_HOME"
           sdkmanager "emulator" "system-images;android-35;google_apis;x86_64" >/dev/null
           echo "no" | avdmanager create avd --force --name sigfrota-ci --package "system-images;android-35;google_apis;x86_64"
