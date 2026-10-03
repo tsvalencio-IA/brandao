@@ -111,6 +111,7 @@ test.describe('SIGFROTA sem Firebase real',()=>{
     await expect(page.getByRole('heading',{name:'I-52100'})).toBeVisible();
     await nextFlowButton(page,/Registrar Baixa/i).click();
 
+    await page.getByLabel('KM / Horímetro').fill('123');
     await page.getByLabel('Categoria').selectOption({label:'Motor'});
     await page.getByLabel('Descrição do defeito').fill('Falha em teste local');
     await page.getByRole('button',{name:'Registrar Baixa'}).click();
