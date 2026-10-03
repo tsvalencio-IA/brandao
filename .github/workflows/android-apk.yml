@@ -62,12 +62,12 @@ jobs:
         run: cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/SIGFROTA-TESTE.apk
 
       - name: Build isolated emulator APK
-        run: gradle -p android clean assembleDebug -PsigfrotaUrl='http://10.0.2.2:4173/app.html#/'
+        run: gradle -p android clean assembleDebug -PsigfrotaUrl='http://127.0.0.1:4173/app.html#/'
 
       - name: Start isolated web app
         env:
           VITE_SETUP_MODE: 'true'
-          VITE_APP_PUBLIC_URL: 'http://10.0.2.2:4173'
+          VITE_APP_PUBLIC_URL: 'http://127.0.0.1:4173'
         shell: bash
         run: |
           set -euo pipefail
@@ -147,6 +147,10 @@ jobs:
             exit 1
           fi
 
+          adb reverse tcp:4173 tcp:4173
+          adb reverse --list | tee /tmp/sigfrota-adb-reverse.txt
+          grep -q 'tcp:4173 tcp:4173' /tmp/sigfrota-adb-reverse.txt
+
           adb install -r android/app/build/outputs/apk/debug/app-debug.apk
           adb shell am force-stop br.com.sigfrota.app.teste
           adb shell am start -W -n br.com.sigfrota.app.teste/br.com.sigfrota.app.MainActivity | tee /tmp/sigfrota-am-start.txt
@@ -196,6 +200,7 @@ jobs:
             /tmp/sigfrota-package-path.txt
             /tmp/sigfrota-pid.txt
             /tmp/sigfrota-activity-top.txt
+            /tmp/sigfrota-adb-reverse.txt
           if-no-files-found: ignore
 
       - name: Publish tested APK in repository
