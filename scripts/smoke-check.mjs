@@ -28,7 +28,7 @@ const checks = [
   ['Controle QR não exige KM final', !files['src/pages/PatrolPublic.jsx'].includes('km_final')],
   ['Controle QR libera eventos por necessidade', files['src/pages/PatrolPublic.jsx'].includes('fuel_event') && files['src/pages/PatrolPublic.jsx'].includes('oil_change_event')],
   ['APK se identifica para ocultar instalar app', files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('SIGFROTA-APP')],
-  ['APK trata insets das barras Android', files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('WindowInsetsCompat.Type.systemBars()')],
+  ['APK trata insets das barras Android', files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('WindowInsetsCompat.Type.statusBars()') && files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('WindowInsetsCompat.Type.navigationBars()') && files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('WindowInsetsCompat.Type.displayCutout()') && files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('view.setPadding(bars.left, bars.top, bars.right, bars.bottom)')],
   ['Botão instalar some no app nativo/standalone', files['src/components/InstallAppButton.jsx'].includes('SIGFROTA-APP') && files['src/components/InstallAppButton.jsx'].includes('(display-mode: standalone)')],
   ['Rodapé institucional correto', files['src/config/app.js'].includes('Powered by Matheus Brandão e thIAguinho Soluções Digitais.')],
 ];
