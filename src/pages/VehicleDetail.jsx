@@ -23,7 +23,8 @@ const editShape=(v)=>({
   prefix:v?.prefix||'',plate:v?.plate||'',brand:v?.brand||'',model:v?.model||'',year:v?.year||'',
   vehicle_type:v?.vehicle_type||'viatura_4rodas',fuel_type:v?.fuel_type||'flex',unit:v?.unit||'',
   codigo_opm:v?.codigo_opm||'',modalidade:v?.modalidade||'',km_horimeter:v?.km_horimeter||'',
-  chassis:v?.chassis||'',renavam:v?.renavam||'',patrimonio:v?.patrimonio||'',next_service_date:v?.next_service_date||''
+  chassis:v?.chassis||'',renavam:v?.renavam||'',patrimonio:v?.patrimonio||'',next_service_date:v?.next_service_date||'',
+  responsible_user_id:v?.responsible_user_id||'',responsible_name:v?.responsible_name||''
 });
 
 const byNewest=(a,b)=>String(b.created_at||b.date_time||'').localeCompare(String(a.created_at||a.date_time||''));
@@ -44,6 +45,7 @@ export default function VehicleDetail(){
   const diagnoses=useCollection('diagnoses',{filters:{vehicle_id:id,...unitFilters}});
   const checklists=useCollection('checklists',{filters:{vehicle_id:id,...unitFilters}});
   const ops=useCollection('operationalLogs',{filters:{vehicle_id:id,...opUnitFilters}});
+  const users=useCollection('users',{orderBy:'name',direction:'asc'});
 
   const total=useMemo(()=>orders.data.reduce((s,o)=>s+Number(o.budget_total||0),0),[orders.data]);
   const sortedDowns=useMemo(()=>[...downs.data].sort(byNewest),[downs.data]);
@@ -95,8 +97,11 @@ export default function VehicleDetail(){
     setSaving(true);
     try{
       const before={...vehicle.data};
+      const responsible=users.data.find(x=>String(x.id)===String(form.responsible_user_id));
       const after={
         ...form,
+        responsible_user_id:responsible?.id||'',
+        responsible_name:responsible?.nome_guerra||responsible?.name||responsible?.email||'',
         unit:scopedToUnit?user.unit:form.unit,
         plate:normalizePlate(form.plate),
         year:Number(form.year||0),
@@ -249,7 +254,7 @@ export default function VehicleDetail(){
 
     <h2 className="section-title">Ficha técnica</h2>
     <Card><div className="detail-grid">
-      {[['Prefixo',v.prefix],['Placa',v.plate],['Marca',v.brand],['Modelo',v.model],['Ano',v.year],['OPM',v.unit],['Código OPM',v.codigo_opm],['Modalidade',v.modalidade],['Chassi',v.chassis],['RENAVAM',v.renavam],['Patrimônio',v.patrimonio],['Próxima revisão',dateBR(v.next_service_date)]].map(([a,b])=><div className="detail-item" key={a}><span>{a}</span><strong>{b||'—'}</strong></div>)}
+      {[['Prefixo',v.prefix],['Placa',v.plate],['Marca',v.brand],['Modelo',v.model],['Ano',v.year],['OPM',v.unit],['Código OPM',v.codigo_opm],['Modalidade',v.modalidade],['Responsável',v.responsible_name],['Chassi',v.chassis],['RENAVAM',v.renavam],['Patrimônio',v.patrimonio],['Próxima revisão',dateBR(v.next_service_date)]].map(([a,b])=><div className="detail-item" key={a}><span>{a}</span><strong>{b||'—'}</strong></div>)}
     </div></Card>
 
     <h2 className="section-title">Relatos pelo QR aguardando análise</h2>
@@ -368,6 +373,7 @@ export default function VehicleDetail(){
           <Field label="RENAVAM"><Input value={form.renavam||''} onChange={e=>setForm({...form,renavam:e.target.value})}/></Field>
           <Field label="Patrimônio"><Input value={form.patrimonio||''} onChange={e=>setForm({...form,patrimonio:e.target.value})}/></Field>
           <Field label="Próxima revisão"><Input type="date" value={String(form.next_service_date||'').slice(0,10)} onChange={e=>setForm({...form,next_service_date:e.target.value})}/></Field>
+          <Field label="Responsável pela viatura" hint="Receberá as atualizações desta viatura no aplicativo."><Select value={form.responsible_user_id||''} onChange={e=>setForm({...form,responsible_user_id:e.target.value})}><option value="">Sem responsável definido</option>{users.data.filter(u=>u.deleted!==true&&u.active!==false&&(!form.unit||!u.unit||u.unit===form.unit)).map(u=><option key={u.id} value={u.id}>{u.nome_guerra||u.name||u.email} {u.unit?'• '+u.unit:''}</option>)}</Select></Field>
         </div>
         <div className="form-actions"><Button variant="secondary" onClick={()=>setEditOpen(false)} disabled={saving}>Cancelar</Button><Button type="submit" disabled={saving}>{saving?'Salvando...':'Salvar alterações'}</Button></div>
       </form>
