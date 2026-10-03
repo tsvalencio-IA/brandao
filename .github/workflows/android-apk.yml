@@ -63,8 +63,6 @@ jobs:
           test -s android/app/src/main/res/mipmap-nodpi/ic_sig_frotas_launcher.webp
           echo "66b7c803f1ad2585f94a0c561d38d1c6a0077c8c0b7681afb80fe5bf4de39ada  android/app/src/main/res/drawable-nodpi/ic_sig_frotas_source.webp" | sha256sum -c -
           echo "66b7c803f1ad2585f94a0c561d38d1c6a0077c8c0b7681afb80fe5bf4de39ada  android/app/src/main/res/mipmap-nodpi/ic_sig_frotas_launcher.webp" | sha256sum -c -
-          echo "3593b015d689c8ee368bd136ecca13fdebfbf47feeb0d925d300171320336e53  android/app/src/main/res/drawable-nodpi/ic_sig_frotas_source.webp" | sha256sum -c -
-          echo "3593b015d689c8ee368bd136ecca13fdebfbf47feeb0d925d300171320336e53  android/app/src/main/res/mipmap-nodpi/ic_sig_frotas_launcher.webp" | sha256sum -c -
           grep -q '@drawable/ic_sig_frotas_foreground' android/app/src/main/res/mipmap-anydpi-v26/ic_sig_frotas_launcher.xml
                     grep -q "image/.*,video/.*,.pdf" src/components/AttachmentField.jsx
           grep -q 'sigfrotaDebugUrl' android/app/build.gradle
