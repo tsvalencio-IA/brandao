@@ -53,15 +53,15 @@ jobs:
           grep -q 'WindowInsetsCompat.Type.displayCutout()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'view.setPadding(bars.left, bars.top, bars.right, bars.bottom)' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'onShowFileChooser' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
-          grep -q 'android:label="Frotas PM"' android/app/src/main/AndroidManifest.xml
-          grep -q 'android:icon="@mipmap/ic_frotas_pm_launcher"' android/app/src/main/AndroidManifest.xml
-          grep -q 'android:roundIcon="@mipmap/ic_frotas_pm_launcher"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:label="SIG Frotas"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:icon="@mipmap/ic_sig_frotas_launcher"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@mipmap/ic_sig_frotas_launcher"' android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.POST_NOTIFICATIONS' android/app/src/main/AndroidManifest.xml
           grep -q 'FrotasPMAndroid' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'NotificationManager.IMPORTANCE_HIGH' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
-          test -s android/app/src/main/res/drawable-nodpi/ic_frotas_pm_source.webp
-          test -s android/app/src/main/res/mipmap-nodpi/ic_frotas_pm_launcher.webp
-          grep -q '@drawable/ic_frotas_pm_foreground' android/app/src/main/res/mipmap-anydpi-v26/ic_frotas_pm_launcher.xml
+          test -s android/app/src/main/res/drawable-nodpi/ic_sig_frotas_source.webp
+          test -s android/app/src/main/res/mipmap-nodpi/ic_sig_frotas_launcher.webp
+          grep -q '@drawable/ic_sig_frotas_foreground' android/app/src/main/res/mipmap-anydpi-v26/ic_sig_frotas_launcher.xml
           grep -q "image/.*,video/.*,.pdf" src/components/AttachmentField.jsx
           grep -q 'sigfrotaDebugUrl' android/app/build.gradle
           echo "Native APK contract validated."
@@ -70,7 +70,7 @@ jobs:
         run: gradle -p android clean assembleDebug
 
       - name: Preserve delivery APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/Frotas-PM.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/SIG-Frotas.apk
 
       - name: Build isolated emulator APK
         run: gradle -p android clean assembleDebug -PsigfrotaUrl='http://127.0.0.1:4173/app.html#/'
@@ -211,12 +211,12 @@ jobs:
 
           adb shell input keyevent KEYCODE_HOME
           sleep 3
-          adb shell uiautomator dump /sdcard/frotas-pm-launcher.xml || true
-          adb pull /sdcard/frotas-pm-launcher.xml /tmp/frotas-pm-launcher.xml || true
-          adb exec-out screencap -p > /tmp/frotas-pm-launcher.png
-          test -s /tmp/frotas-pm-launcher.png
-          if [ -s /tmp/frotas-pm-launcher.xml ]; then
-            grep -qi 'Frotas PM' /tmp/frotas-pm-launcher.xml || true
+          adb shell uiautomator dump /sdcard/sig-frotas-launcher.xml || true
+          adb pull /sdcard/sig-frotas-launcher.xml /tmp/sig-frotas-launcher.xml || true
+          adb exec-out screencap -p > /tmp/sig-frotas-launcher.png
+          test -s /tmp/sig-frotas-launcher.png
+          if [ -s /tmp/sig-frotas-launcher.xml ]; then
+            grep -qi 'SIG Frotas' /tmp/sig-frotas-launcher.xml || true
           fi
           echo "Launcher screenshot captured for icon verification."
 
@@ -235,8 +235,8 @@ jobs:
             /tmp/sigfrota-pid.txt
             /tmp/sigfrota-activity-top.txt
             /tmp/sigfrota-adb-reverse.txt
-            /tmp/frotas-pm-launcher.png
-            /tmp/frotas-pm-launcher.xml
+            /tmp/sig-frotas-launcher.png
+            /tmp/sig-frotas-launcher.xml
           if-no-files-found: ignore
 
       - name: Publish tested APK in repository
@@ -248,8 +248,8 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           mkdir -p public
-          cp /tmp/Frotas-PM.apk public/Frotas-PM.apk
-          git add public/Frotas-PM.apk
+          cp /tmp/SIG-Frotas.apk public/SIG-Frotas.apk
+          git add public/SIG-Frotas.apk
           if git diff --cached --quiet; then
             echo "APK already published."
           else
@@ -260,5 +260,5 @@ jobs:
       - name: Upload tested APK
         uses: actions/upload-artifact@v4
         with:
-          name: Frotas-PM-apk
-          path: /tmp/Frotas-PM.apk
+          name: SIG-Frotas-apk
+          path: /tmp/SIG-Frotas.apk
