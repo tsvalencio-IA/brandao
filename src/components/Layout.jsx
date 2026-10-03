@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext';
 import { canAccessRoute, ROLE_LABELS } from '../lib/permissions';
 import Footer from './Footer';
 import IntegrationNotifications from './IntegrationNotifications';
+import AppNotifications from './AppNotifications';
 import InstallAppButton from './InstallAppButton';
 import { Modal } from './ui';
 
@@ -50,6 +51,7 @@ export default function Layout() {
 
   return (
     <div className="shell">
+      <AppNotifications/>
       {open && <button className="overlay" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
       <aside className={'sidebar ' + (open ? 'sidebar-open' : '')}>
         <div className="brand">
