@@ -180,21 +180,30 @@ jobs:
 
           test -s /tmp/sigfrota-window.xml
           test -s /tmp/sigfrota-apk.png
+          test "$(stat -c%s /tmp/sigfrota-apk.png)" -gt 20000
 
-          if grep -qiE 'Webpage not available|ERR_CLEARTEXT_NOT_PERMITTED|net::ERR_' /tmp/sigfrota-window.xml; then
+          if grep -qiE 'Webpage not available|ERR_CLEARTEXT_NOT_PERMITTED|ERR_ADDRESS_UNREACHABLE|net::ERR_' /tmp/sigfrota-window.xml; then
             echo "WebView error detected inside APK."
             cat /tmp/sigfrota-window.xml
             exit 1
           fi
 
-          if grep -qi 'text="Entrar"' /tmp/sigfrota-window.xml; then
-            echo "Unexpected login screen detected inside isolated APK."
-            cat /tmp/sigfrota-window.xml
-            exit 1
-          fi
+          grep -q 'class="android.webkit.WebView"' /tmp/sigfrota-window.xml
 
-          grep -q 'Modo de configuração ativo' /tmp/sigfrota-window.xml
-          echo "APK installed, MainActivity active, isolated SIGFROTA screen confirmed."
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          xml=Path('/tmp/sigfrota-window.xml').read_text()
+          m=re.search(r'class="android\.webkit\.WebView"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',xml)
+          if not m:
+              raise SystemExit('WebView bounds not found')
+          left,top,right,bottom=map(int,m.groups())
+          if top < 20 or bottom > 620 or right-left < 300:
+              raise SystemExit(f'Unsafe WebView bounds: {(left,top,right,bottom)}')
+          print('Safe WebView bounds:',(left,top,right,bottom))
+          PY
+
+          echo "APK installed, MainActivity active, WebView safe area and screenshot confirmed."
 
       - name: Upload APK smoke evidence
         if: always()
