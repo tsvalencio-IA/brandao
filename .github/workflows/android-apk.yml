@@ -14,6 +14,7 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,16 +35,106 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build debug APK
-        run: gradle -p android assembleDebug
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Prepare APK for browser
-        run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/SIGFROTA-TESTE.apk
+      - name: Install web dependencies
+        run: npm install
 
-      - name: Publish APK in repository
+      - name: Validate native APK contract
         shell: bash
         run: |
+          set -euo pipefail
+          grep -q 'SIGFROTA-APP' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'WindowInsetsCompat.Type.systemBars()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'onShowFileChooser' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'android:icon="@drawable/ic_sigfrota"' android/app/src/main/AndroidManifest.xml
+          grep -q "image/.*,video/.*,.pdf" src/components/AttachmentField.jsx
+          grep -q 'sigfrotaDebugUrl' android/app/build.gradle
+          echo "Native APK contract validated."
+
+      - name: Build delivery debug APK
+        run: gradle -p android clean assembleDebug
+
+      - name: Preserve delivery APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/SIGFROTA-TESTE.apk
+
+      - name: Build isolated emulator APK
+        run: gradle -p android clean assembleDebug -PsigfrotaUrl='http://10.0.2.2:4173/app.html#/'
+
+      - name: Start isolated web app
+        env:
+          VITE_SETUP_MODE: 'true'
+          VITE_APP_PUBLIC_URL: 'http://10.0.2.2:4173'
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm run dev -- --host 0.0.0.0 --port 4173 > /tmp/sigfrota-vite.log 2>&1 &
+          echo $! > /tmp/sigfrota-vite.pid
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:4173/app.html >/dev/null; then
+              echo "Isolated Vite app is available."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/sigfrota-vite.log
+          exit 1
+
+      - name: Install Android 35 emulator image
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager "emulator" "system-images;android-35;google_apis;x86_64" >/dev/null
+          echo "no" | avdmanager create avd --force --name sigfrota-ci --package "system-images;android-35;google_apis;x86_64"
+
+      - name: Install and open isolated APK in Android
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+          nohup "$ANDROID_HOME/emulator/emulator"             -avd sigfrota-ci             -no-window             -no-audio             -no-boot-anim             -no-snapshot             -gpu swiftshader_indirect             > /tmp/sigfrota-emulator.log 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 120); do
+            BOOT="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+            if [ "$BOOT" = "1" ]; then break; fi
+            sleep 2
+          done
+          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+          adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+          adb shell am force-stop br.com.sigfrota.app.teste
+          adb shell am start -W -n br.com.sigfrota.app.teste/br.com.sigfrota.app.MainActivity
+          sleep 8
+
+          adb shell pm path br.com.sigfrota.app.teste
+          adb shell dumpsys activity activities | grep -q 'mResumedActivity.*br.com.sigfrota.app.teste'
+
+          adb shell uiautomator dump /sdcard/sigfrota-window.xml || true
+          adb pull /sdcard/sigfrota-window.xml /tmp/sigfrota-window.xml || true
+          adb exec-out screencap -p > /tmp/sigfrota-apk.png
+
+          test -s /tmp/sigfrota-apk.png
+          echo "APK installed, MainActivity resumed, screenshot captured."
+
+      - name: Upload APK smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SIGFROTA-apk-smoke-evidence
+          path: |
+            /tmp/sigfrota-apk.png
+            /tmp/sigfrota-window.xml
+            /tmp/sigfrota-emulator.log
+            /tmp/sigfrota-vite.log
+          if-no-files-found: ignore
+
+      - name: Publish tested APK in repository
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
@@ -58,7 +149,7 @@ jobs:
             git push origin HEAD:main
           fi
 
-      - name: Upload APK
+      - name: Upload tested APK
         uses: actions/upload-artifact@v4
         with:
           name: SIGFROTA-debug-apk
