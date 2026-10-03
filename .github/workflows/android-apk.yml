@@ -53,9 +53,12 @@ jobs:
           grep -q 'WindowInsetsCompat.Type.displayCutout()' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'view.setPadding(bars.left, bars.top, bars.right, bars.bottom)' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
           grep -q 'onShowFileChooser' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
-          grep -q 'android:icon="@drawable/ic_sigfrota_app"' android/app/src/main/AndroidManifest.xml
-          grep -q 'android:roundIcon="@drawable/ic_sigfrota_app"' android/app/src/main/AndroidManifest.xml
-          test -s android/app/src/main/res/drawable-nodpi/ic_sigfrota_app.jpg
+          grep -q 'android:label="Frotas PM"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:icon="@mipmap/ic_launcher"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.POST_NOTIFICATIONS' android/app/src/main/AndroidManifest.xml
+          grep -q 'FrotasPMAndroid' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          grep -q 'NotificationManager.IMPORTANCE_HIGH' android/app/src/main/java/br/com/sigfrota/app/MainActivity.java
+          test -s android/app/src/main/res/drawable-nodpi/ic_frotas_pm.webp
           grep -q "image/.*,video/.*,.pdf" src/components/AttachmentField.jsx
           grep -q 'sigfrotaDebugUrl' android/app/build.gradle
           echo "Native APK contract validated."
@@ -64,7 +67,7 @@ jobs:
         run: gradle -p android clean assembleDebug
 
       - name: Preserve delivery APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/SIGFROTA-TESTE.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/Frotas-PM.apk
 
       - name: Build isolated emulator APK
         run: gradle -p android clean assembleDebug -PsigfrotaUrl='http://127.0.0.1:4173/app.html#/'
@@ -157,16 +160,16 @@ jobs:
           grep -q 'tcp:4173 tcp:4173' /tmp/sigfrota-adb-reverse.txt
 
           adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-          adb shell am force-stop br.com.sigfrota.app.teste
-          adb shell am start -W -n br.com.sigfrota.app.teste/br.com.sigfrota.app.MainActivity | tee /tmp/sigfrota-am-start.txt
+          adb shell am force-stop br.com.sigfrota.app
+          adb shell am start -W -n br.com.sigfrota.app/br.com.sigfrota.app.MainActivity | tee /tmp/sigfrota-am-start.txt
           sleep 8
 
-          adb shell pm path br.com.sigfrota.app.teste | tee /tmp/sigfrota-package-path.txt
-          adb shell pidof br.com.sigfrota.app.teste | tee /tmp/sigfrota-pid.txt
+          adb shell pm path br.com.sigfrota.app | tee /tmp/sigfrota-package-path.txt
+          adb shell pidof br.com.sigfrota.app | tee /tmp/sigfrota-pid.txt
           test -s /tmp/sigfrota-pid.txt
 
           adb shell dumpsys activity top > /tmp/sigfrota-activity-top.txt
-          grep -q 'br.com.sigfrota.app.teste' /tmp/sigfrota-activity-top.txt
+          grep -q 'br.com.sigfrota.app' /tmp/sigfrota-activity-top.txt
           grep -q 'MainActivity' /tmp/sigfrota-activity-top.txt
 
           adb shell uiautomator dump /sdcard/sigfrota-window.xml
@@ -217,8 +220,8 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           mkdir -p public
-          cp /tmp/SIGFROTA-TESTE.apk public/SIGFROTA-TESTE.apk
-          git add public/SIGFROTA-TESTE.apk
+          cp /tmp/Frotas-PM.apk public/Frotas-PM.apk
+          git add public/Frotas-PM.apk
           if git diff --cached --quiet; then
             echo "APK already published."
           else
@@ -229,5 +232,5 @@ jobs:
       - name: Upload tested APK
         uses: actions/upload-artifact@v4
         with:
-          name: SIGFROTA-debug-apk
-          path: /tmp/SIGFROTA-TESTE.apk
+          name: Frotas-PM-apk
+          path: /tmp/Frotas-PM.apk

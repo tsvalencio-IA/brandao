@@ -13,6 +13,10 @@ const files = Object.fromEntries([
   'src/pages/PatrolPublic.jsx',
   'src/pages/VehicleDetail.jsx',
   'android/app/src/main/java/br/com/sigfrota/app/MainActivity.java',
+  'android/app/src/main/AndroidManifest.xml',
+  'src/components/AppNotifications.jsx',
+  'src/services/requestPdf.js',
+  'src/services/budgetImport.js',
 ].map((path) => [path, readFileSync(path, 'utf8')]));
 
 const checks = [
@@ -29,6 +33,11 @@ const checks = [
   ['Controle QR libera eventos por necessidade', files['src/pages/PatrolPublic.jsx'].includes('fuel_event') && files['src/pages/PatrolPublic.jsx'].includes('oil_change_event')],
   ['APK se identifica para ocultar instalar app', files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('SIGFROTA-APP')],
   ['APK trata insets das barras Android', files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('WindowInsetsCompat.Type.statusBars()') && files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('WindowInsetsCompat.Type.navigationBars()') && files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('WindowInsetsCompat.Type.displayCutout()') && files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('view.setPadding(bars.left, bars.top, bars.right, bars.bottom)')],
+  ['APK se chama Frotas PM', files['android/app/src/main/AndroidManifest.xml'].includes('android:label="Frotas PM"')],
+  ['APK solicita notificações Android', files['android/app/src/main/AndroidManifest.xml'].includes('POST_NOTIFICATIONS') && files['android/app/src/main/java/br/com/sigfrota/app/MainActivity.java'].includes('NotificationManager.IMPORTANCE_HIGH')],
+  ['Notificações acompanham avarias e orçamentos', files['src/components/AppNotifications.jsx'].includes('Nova avaria') && files['src/components/AppNotifications.jsx'].includes('Orçamento recebido')],
+  ['PDF institucional usa checklist e evidências', files['src/services/requestPdf.js'].includes('CHECKLIST DE ENCAMINHAMENTO') && files['src/services/requestPdf.js'].includes('EVIDÊNCIAS FOTOGRÁFICAS')],
+  ['Importador aceita XLSX e PDF', files['src/services/budgetImport.js'].includes("source_type:'PDF'") && files['src/services/budgetImport.js'].includes("source_type:'XLSX'")],
   ['Botão instalar some no app nativo/standalone', files['src/components/InstallAppButton.jsx'].includes('SIGFROTA-APP') && files['src/components/InstallAppButton.jsx'].includes('(display-mode: standalone)')],
   ['Rodapé institucional correto', files['src/config/app.js'].includes('Powered by Matheus Brandão e thIAguinho Soluções Digitais.')],
 ];

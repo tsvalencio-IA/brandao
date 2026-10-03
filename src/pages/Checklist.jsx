@@ -89,6 +89,8 @@ export default function Checklist(){
       observations:obs,
       mechanic_id:user.uid,
       mechanic_name:user.displayName||user.name||user.email,
+      responsible_id:user.uid,
+      responsible_name:user.displayName||user.name||user.email,
       status:previous?'RETIFICADO':'CONCLUIDO',
       previous_version_id:previous?.id||null
     });
@@ -126,7 +128,7 @@ export default function Checklist(){
   };
 
   return <div>
-    <PageHeader title="Checklist Técnico" description="Checklist mecânico vinculado à baixa e ao diagnóstico da viatura."/>
+    <PageHeader title="Checklist de Encaminhamento" description="Conferência da viatura antes do envio à oficina. Registre itens, observações e fotos; elas serão incorporadas ao PDF de solicitação de orçamento."/>
 
     {eligible.length===0?<EmptyState icon={ListChecks} title="Nenhuma viatura aguardando checklist"/>:
       <div className="card-list">{eligible.map(v=><Card className="record-card" key={v.id}>
@@ -158,7 +160,7 @@ export default function Checklist(){
         </div>
 
         <div style={{marginTop:14}}><Field label="Observações gerais"><Textarea value={obs} onChange={e=>setObs(e.target.value)}/></Field></div>
-        <div style={{marginTop:14}}><AttachmentField max={20} value={files} onChange={setFiles}/></div>
+        <div style={{marginTop:14}}><div className="field-label">Fotos da viatura / evidências para a oficina</div><div className="config-note" style={{marginBottom:8}}>As imagens anexadas aqui acompanham o checklist e entram no PDF de solicitação de orçamento.</div><AttachmentField max={20} value={files} onChange={setFiles}/></div>
         <div className="form-actions"><Button type="button" variant="secondary" onClick={closeChecklist}>Cancelar</Button><Button type="submit">Concluir checklist</Button></div>
       </form>
     </Modal>
