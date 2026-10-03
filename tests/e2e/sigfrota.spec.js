@@ -135,7 +135,7 @@ test.describe('SIGFROTA sem Firebase real',()=>{
     await nextFlowButton(page,'Gerar O.S.').click();
     await expect(page.getByRole('heading',{name:'Gerar OES'})).toBeVisible();
     await page.getByLabel('Oficina').selectOption('w1');
-    await page.getByRole('button',{name:'Gerar OES'}).click();
+    await page.getByRole('dialog').getByRole('button',{name:'Gerar OES'}).click();
     await expect(page).toHaveURL(/app\.html#\/viaturas\/v1$/);
     await expect(nextFlowButton(page,/Abrir O\.S\. atual/)).toBeVisible();
     await expectNoHorizontalOverflow(page,'fluxo final');
