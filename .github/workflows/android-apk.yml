@@ -87,7 +87,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager "emulator" "system-images;android-35;google_apis;x86_64" >/dev/null
+          sdkmanager "emulator" "system-images;android-35;google_apis;x86_64" >/dev/null
           echo "no" | avdmanager create avd --force --name sigfrota-ci --package "system-images;android-35;google_apis;x86_64"
 
       - name: Install and open isolated APK in Android
