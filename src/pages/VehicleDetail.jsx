@@ -11,10 +11,11 @@ import { useAuth } from '../auth/AuthContext';
 import { entities } from '../data/repository';
 import { can, getVehicleScopeMode, vehicleScopeFilter } from '../lib/permissions';
 import { logAudit } from '../services/audit';
+import { registerVehicleDown } from '../services/workflows';
 import { APP } from '../config/app';
 import { FUEL_TYPES, VEHICLE_TYPES } from '../data/schema';
 import { normalizePlate } from '../lib/format';
-import { Button, Card, EmptyState, Field, Input, Modal, PageHeader, Select } from '../components/ui';
+import { Button, Card, EmptyState, Field, Input, Modal, PageHeader, Select, Textarea } from '../components/ui';
 import StatusBadge from '../components/StatusBadge';
 import { dateBR, money } from '../lib/format';
 
@@ -72,10 +73,16 @@ export default function VehicleDetail(){
   const latestOrder=currentOrder;
 
   const latestOperationalKm=useMemo(()=>ops.data.reduce((max,x)=>Math.max(max,Number(x.km_initial||0)),0),[ops.data]);
+  const pendingQrIssues=useMemo(()=>[...ops.data]
+    .filter(x=>x.mechanical_issue_event&&x.issue_status==='PENDENTE_ANALISE')
+    .sort(byNewest),[ops.data]);
 
   const [editOpen,setEditOpen]=useState(false);
   const [form,setForm]=useState({});
   const [saving,setSaving]=useState(false);
+  const [issueReport,setIssueReport]=useState(null);
+  const [issueForm,setIssueForm]=useState({priority:'media',category:'Outros',description:''});
+  const [issueSaving,setIssueSaving]=useState(false);
 
   const canManage=can.manageVehicles(userRole,user);
   const scopedToUnit=getVehicleScopeMode(user)==='unit'&&Boolean(user?.unit);
@@ -131,6 +138,50 @@ export default function VehicleDetail(){
     const data=await QRCode.toDataURL(url,{width:360,margin:2});
     const w=window.open('','_blank');
     w.document.write('<title>QR '+vehicle.data.prefix+'</title><div style="font-family:Arial;text-align:center;padding:30px"><h2>'+vehicle.data.prefix+'</h2><p>'+vehicle.data.plate+'</p><img src="'+data+'"><p style="font-size:12px">'+url+'</p></div>');
+  };
+
+  const openQrIssue=(report)=>{
+    setIssueReport(report);
+    setIssueForm({
+      priority:'media',
+      category:report.issue_category||'Outros',
+      description:report.issue_description||report.observations||''
+    });
+  };
+
+  const convertQrIssue=async(e)=>{
+    e.preventDefault();
+    if(!issueReport||!vehicle.data)return;
+    setIssueSaving(true);
+    try{
+      const attachments=(issueReport.issue_files?.length?issueReport.issue_files:issueReport.files)||[];
+      const down=await registerVehicleDown({
+        vehicle:vehicle.data,
+        payload:{
+          km:Number(issueReport.km_initial||vehicle.data.km_horimeter||0),
+          defect_description:issueForm.description,
+          defect_category:issueForm.category,
+          priority:issueForm.priority,
+          tow_required:false,
+          observations:'Relato recebido pelo QR Code • '+(issueReport.rank||'')+' '+(issueReport.war_name||'')+' • RE '+(issueReport.re||''),
+          attachments
+        },
+        actor:user
+      });
+      await entities.operationalLogs.update(issueReport.id,{
+        issue_status:'CONVERTIDO_EM_BAIXA',
+        vehicle_down_id:down.id,
+        issue_priority:issueForm.priority,
+        reviewed_by_uid:user?.uid||null,
+        reviewed_by_email:user?.email||null,
+        reviewed_at:new Date().toISOString()
+      });
+      await logAudit({
+        user,role:userRole,action:'RELATO_QR_CONVERTIDO_EM_BAIXA',entity:'OperationalLog',recordId:issueReport.id,
+        context:{vehicle_id:id,vehicle_down_id:down.id,priority:issueForm.priority}
+      });
+      setIssueReport(null);
+    }finally{setIssueSaving(false)}
   };
 
   if(vehicle.loading) return <div className="full-loader inline"><span className="spinner"/></div>;
@@ -201,6 +252,23 @@ export default function VehicleDetail(){
       {[['Prefixo',v.prefix],['Placa',v.plate],['Marca',v.brand],['Modelo',v.model],['Ano',v.year],['OPM',v.unit],['Código OPM',v.codigo_opm],['Modalidade',v.modalidade],['Chassi',v.chassis],['RENAVAM',v.renavam],['Patrimônio',v.patrimonio],['Próxima revisão',dateBR(v.next_service_date)]].map(([a,b])=><div className="detail-item" key={a}><span>{a}</span><strong>{b||'—'}</strong></div>)}
     </div></Card>
 
+    <h2 className="section-title">Relatos pelo QR aguardando análise</h2>
+    {pendingQrIssues.length===0?<EmptyState icon={QrCode} title="Nenhum problema pendente relatado pelo QR"/>:
+      <div className="card-list">{pendingQrIssues.map(r=><Card key={r.id} className="record-card">
+        <div className="record-main">
+          <h3>{r.issue_category||'Avaria'} • {r.vehicle_plate||v.plate}</h3>
+          <p>{r.issue_description||r.observations||'Sem descrição'}</p>
+          <p>{r.rank||''} {r.war_name||''} • RE {r.re||'—'} • KM {Number(r.km_initial||0).toLocaleString('pt-BR')}</p>
+          {!!(r.issue_files?.length||r.files?.length)&&<p><Camera size={12} style={{verticalAlign:'middle'}}/> {(r.issue_files?.length||r.files?.length||0)} foto(s)/anexo(s)</p>}
+        </div>
+        <div className="record-actions">
+          <Button onClick={()=>openQrIssue(r)} disabled={flowKey!=='down'||!can.registerDown(userRole,user)}>
+            {flowKey==='down'?'Analisar e registrar baixa':'Aguardando encerrar fluxo atual'}
+          </Button>
+        </div>
+      </Card>)}</div>
+    }
+
     <h2 className="section-title">Baixas e fotos</h2>
     {sortedDowns.length===0?<EmptyState icon={AlertTriangle} title="Nenhuma baixa registrada"/>:
       <div className="card-list">
@@ -265,6 +333,22 @@ export default function VehicleDetail(){
         })}
       </tbody></table></div>
     }
+
+    <Modal open={!!issueReport} onClose={()=>!issueSaving&&setIssueReport(null)} title="Analisar relato recebido pelo QR" wide>
+      <form onSubmit={convertQrIssue} className="form-stack">
+        {issueReport&&<Card className="down-context-card">
+          <div className="kv"><span>Patrulheiro</span><strong>{issueReport.rank||''} {issueReport.war_name||''} • RE {issueReport.re||'—'}</strong></div>
+          <div className="kv"><span>KM informado</span><strong>{Number(issueReport.km_initial||0).toLocaleString('pt-BR')}</strong></div>
+          <div className="kv"><span>Relato</span><strong>{issueReport.issue_description||issueReport.observations||'—'}</strong></div>
+        </Card>}
+        <div className="form-grid">
+          <Field label="Prioridade"><Select value={issueForm.priority} onChange={e=>setIssueForm({...issueForm,priority:e.target.value})}><option value="leve">Leve</option><option value="media">Média</option><option value="critica">Crítica</option></Select></Field>
+          <Field label="Categoria"><Input value={issueForm.category} onChange={e=>setIssueForm({...issueForm,category:e.target.value})}/></Field>
+        </div>
+        <Field label="Descrição que seguirá para manutenção" required><Textarea required value={issueForm.description} onChange={e=>setIssueForm({...issueForm,description:e.target.value})}/></Field>
+        <div className="form-actions"><Button type="button" variant="secondary" onClick={()=>setIssueReport(null)} disabled={issueSaving}>Cancelar</Button><Button type="submit" disabled={issueSaving}>{issueSaving?'Registrando...':'Confirmar baixa e encaminhar para análise'}</Button></div>
+      </form>
+    </Modal>
 
     <Modal open={editOpen} onClose={()=>!saving&&setEditOpen(false)} title="Editar Viatura" wide>
       <form onSubmit={saveEdit} className="form-stack">
