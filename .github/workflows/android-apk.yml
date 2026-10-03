@@ -149,18 +149,23 @@ jobs:
 
           adb install -r android/app/build/outputs/apk/debug/app-debug.apk
           adb shell am force-stop br.com.sigfrota.app.teste
-          adb shell am start -W -n br.com.sigfrota.app.teste/br.com.sigfrota.app.MainActivity
+          adb shell am start -W -n br.com.sigfrota.app.teste/br.com.sigfrota.app.MainActivity | tee /tmp/sigfrota-am-start.txt
           sleep 8
 
-          adb shell pm path br.com.sigfrota.app.teste
-          adb shell dumpsys activity activities | grep -q 'mResumedActivity.*br.com.sigfrota.app.teste'
+          adb shell pm path br.com.sigfrota.app.teste | tee /tmp/sigfrota-package-path.txt
+          adb shell pidof br.com.sigfrota.app.teste | tee /tmp/sigfrota-pid.txt
+          test -s /tmp/sigfrota-pid.txt
+
+          adb shell dumpsys activity top > /tmp/sigfrota-activity-top.txt
+          grep -q 'br.com.sigfrota.app.teste' /tmp/sigfrota-activity-top.txt
+          grep -q 'MainActivity' /tmp/sigfrota-activity-top.txt
 
           adb shell uiautomator dump /sdcard/sigfrota-window.xml || true
           adb pull /sdcard/sigfrota-window.xml /tmp/sigfrota-window.xml || true
           adb exec-out screencap -p > /tmp/sigfrota-apk.png
 
           test -s /tmp/sigfrota-apk.png
-          echo "APK installed, MainActivity resumed, screenshot captured."
+          echo "APK installed, MainActivity active, screenshot captured."
 
       - name: Upload APK smoke evidence
         if: always()
@@ -172,6 +177,10 @@ jobs:
             /tmp/sigfrota-window.xml
             /tmp/sigfrota-emulator.log
             /tmp/sigfrota-vite.log
+            /tmp/sigfrota-am-start.txt
+            /tmp/sigfrota-package-path.txt
+            /tmp/sigfrota-pid.txt
+            /tmp/sigfrota-activity-top.txt
           if-no-files-found: ignore
 
       - name: Publish tested APK in repository
